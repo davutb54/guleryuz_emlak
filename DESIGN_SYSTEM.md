@@ -618,60 +618,253 @@ chart area:
 
 ---
 
-## 11. Tailwind Config (Hazır Snippet)
+## 11. Tailwind v4 Kurulum (globals.css)
 
-```ts
-// tailwind.config.ts
-import type { Config } from 'tailwindcss'
+> **ÖNEMLİ:** Tailwind v4 ile artık `tailwind.config.ts` YOK. Tüm tema CSS'te `@theme` direktifi ile tanımlanır. Bu projede Tailwind v4 + Next.js 16 + PostCSS kombinasyonu kullanılır.
 
-const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        navy: {
-          950: '#050E1F', 900: '#0A1628', 850: '#0E1D33',
-          800: '#142540', 700: '#1B2F4E', 600: '#243C5F', 500: '#34527E',
-        },
-        gold: {
-          300: '#E8C77A', 400: '#E0B85C', 500: '#D4A744',
-          600: '#B8902F', 700: '#8E6E1F',
-        },
-        silver: { 300: '#D8DCE4', 400: '#BFC4CE', 500: '#9098A6' },
-        cream: { 50: '#FAF7F0', 100: '#F5F1E8', 200: '#E8E3D5', 300: '#C9C2AE' },
-      },
-      fontFamily: {
-        display: ['var(--font-playfair)', 'Georgia', 'serif'],
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-      },
-      fontSize: {
-        'display-2xl': ['5.5rem',  { lineHeight: '1.0',  letterSpacing: '-0.04em' }],
-        'display-xl':  ['4rem',    { lineHeight: '1.05', letterSpacing: '-0.03em' }],
-        'display-lg':  ['3rem',    { lineHeight: '1.1',  letterSpacing: '-0.02em' }],
-        'display-md':  ['2.25rem', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
-        'display-sm':  ['1.75rem', { lineHeight: '1.2',  letterSpacing: '-0.01em' }],
-      },
-      borderRadius: {
-        'xs': '4px', 'sm': '8px', 'md': '12px',
-        'lg': '16px', 'xl': '24px', '2xl': '32px',
-      },
-      boxShadow: {
-        'card':       '0 4px 24px rgba(0, 0, 0, 0.4)',
-        'card-hover': '0 8px 40px rgba(0, 0, 0, 0.55)',
-        'glow-sm':    '0 0 16px rgba(212, 167, 68, 0.15)',
-        'glow-md':    '0 0 32px rgba(212, 167, 68, 0.25)',
-        'inner-gold': 'inset 0 0 0 1px rgba(212, 167, 68, 0.2)',
-      },
-      backdropBlur: { 'xs': '4px', 'sm': '8px', 'md': '16px', 'lg': '24px' },
-      animation: {
-        'fade-up': 'fadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1)',
-        'shimmer': 'shimmer 2s ease-in-out infinite',
-      },
-    },
-  },
+### `src/app/globals.css` (Tam İçerik)
+
+```css
+@import "tailwindcss";
+
+/* ===== Dark mode için custom variant (Tailwind v4 yöntemi) ===== */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ===== Theme tokens — @theme inline (next/font ile uyumlu) ===== */
+@theme inline {
+  /* === Renkler === */
+  /* Navy spektrum */
+  --color-navy-950: #050E1F;
+  --color-navy-900: #0A1628;
+  --color-navy-850: #0E1D33;
+  --color-navy-800: #142540;
+  --color-navy-700: #1B2F4E;
+  --color-navy-600: #243C5F;
+  --color-navy-500: #34527E;
+
+  /* Gold spektrum */
+  --color-gold-300: #E8C77A;
+  --color-gold-400: #E0B85C;
+  --color-gold-500: #D4A744;
+  --color-gold-600: #B8902F;
+  --color-gold-700: #8E6E1F;
+
+  /* Silver/Pearl */
+  --color-silver-300: #D8DCE4;
+  --color-silver-400: #BFC4CE;
+  --color-silver-500: #9098A6;
+
+  /* Cream/Ivory */
+  --color-cream-50:  #FAF7F0;
+  --color-cream-100: #F5F1E8;
+  --color-cream-200: #E8E3D5;
+  --color-cream-300: #C9C2AE;
+
+  /* === Fontlar (next/font'tan gelir) === */
+  --font-display: var(--font-playfair);
+  --font-sans:    var(--font-inter);
+  --font-mono:    ui-monospace, "SF Mono", monospace;
+
+  /* === Font Boyutları === */
+  --text-display-2xl: 5.5rem;
+  --text-display-2xl--line-height: 1.0;
+  --text-display-2xl--letter-spacing: -0.04em;
+
+  --text-display-xl: 4rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-xl--letter-spacing: -0.03em;
+
+  --text-display-lg: 3rem;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.02em;
+
+  --text-display-md: 2.25rem;
+  --text-display-md--line-height: 1.15;
+  --text-display-md--letter-spacing: -0.02em;
+
+  --text-display-sm: 1.75rem;
+  --text-display-sm--line-height: 1.2;
+  --text-display-sm--letter-spacing: -0.01em;
+
+  /* === Border Radius === */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+
+  /* === Shadows === */
+  --shadow-card:        0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover:  0 8px 40px rgba(0, 0, 0, 0.55);
+  --shadow-modal:       0 20px 60px rgba(0, 0, 0, 0.7);
+  --shadow-glow-sm:     0 0 16px rgba(212, 167, 68, 0.15);
+  --shadow-glow-md:     0 0 32px rgba(212, 167, 68, 0.25);
+  --shadow-glow-lg:     0 8px 48px rgba(212, 167, 68, 0.35);
+  --shadow-inner-gold:  inset 0 0 0 1px rgba(212, 167, 68, 0.2);
+
+  /* === Backdrop blur === */
+  --blur-xs: 4px;
+  --blur-sm: 8px;
+  --blur-md: 16px;
+  --blur-lg: 24px;
 }
-export default config
+
+/* ===== Semantic CSS Variables (utility üretmez, sadece referans) ===== */
+:root {
+  --bg-canvas:        var(--color-navy-900);
+  --bg-surface:       var(--color-navy-850);
+  --bg-surface-hover: var(--color-navy-800);
+  --bg-elevated:      var(--color-navy-800);
+  --bg-overlay:       rgba(5, 14, 31, 0.85);
+
+  --glass-bg:         rgba(20, 37, 64, 0.55);
+  --glass-border:     rgba(212, 167, 68, 0.18);
+
+  --text-primary:     var(--color-cream-50);
+  --text-body:        var(--color-cream-100);
+  --text-secondary:   var(--color-cream-300);
+  --text-muted:       var(--color-silver-500);
+  --text-accent:      var(--color-gold-500);
+  --text-inverse:     var(--color-navy-900);
+
+  --border-subtle:    rgba(212, 167, 68, 0.12);
+  --border-default:   rgba(212, 167, 68, 0.25);
+  --border-strong:    var(--color-gold-500);
+  --border-divider:   rgba(216, 220, 228, 0.08);
+}
+
+/* ===== Base styles ===== */
+@layer base {
+  html {
+    background: var(--bg-canvas);
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--bg-canvas);
+    color: var(--text-body);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: var(--color-gold-500);
+    color: var(--color-navy-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ===== Utility helpers ===== */
+@layer utilities {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 4px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .text-balance { text-wrap: balance; }
+}
+
+/* ===== Animasyonlar ===== */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.animate-fade-up { animation: fadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1); }
+.animate-shimmer { animation: shimmer 2s ease-in-out infinite; }
 ```
+
+### `postcss.config.mjs` (zaten oluşturulmuş — sadece doğrula)
+
+```js
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+};
+```
+
+### Fontları yükleme — `src/app/layout.tsx`
+
+```tsx
+import { Playfair_Display, Inter } from "next/font/google";
+import "./globals.css";
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+const inter = Inter({
+  subsets: ["latin", "latin-ext"], // latin-ext Türkçe karakterler için kritik
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+});
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="tr" className={`${playfair.variable} ${inter.variable}`}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+**Önemli:** Inter için `latin-ext` subset eklemek Türkçe karakterler (ç, ğ, ı, ö, ş, ü) için kritik, atlama.
+
+### Kullanım Örnekleri (utility class'lar)
+
+```tsx
+// Renkler
+<div className="bg-navy-900 text-cream-100" />
+<span className="text-gold-500" />
+
+// Tipografi
+<h1 className="font-display text-display-xl">Hayalindeki Mülk</h1>
+<p className="font-sans text-base">Açıklama metni</p>
+
+// Border radius
+<div className="rounded-lg" />
+
+// Shadows
+<div className="shadow-card hover:shadow-card-hover" />
+<div className="shadow-glow-md" />
+
+// Glass
+<div className="glass rounded-xl p-6" />
+
+// Backdrop blur
+<div className="backdrop-blur-md" />
+```
+
+---
 
 ---
 
@@ -679,16 +872,19 @@ export default config
 
 Faz 1'de bu sırada üret:
 
-1. `app/globals.css` — CSS değişkenler + font import
-2. `tailwind.config.ts` — yukarıdaki snippet
-3. `components/ui/button.tsx` — primary, secondary, ghost, icon variants
-4. `components/ui/input.tsx` — label + icon + helper
-5. `components/ui/card.tsx` — base + glass variants
-6. `components/ui/badge.tsx` — variants
-7. `components/layout/header.tsx`
-8. `components/layout/footer.tsx`
-9. `components/listing/listing-card.tsx`
-10. `components/hero/home-hero.tsx`
+1. `src/app/globals.css` — Tailwind v4 `@theme` bloğu (yukarıdaki tam içerik)
+2. `src/app/layout.tsx` — next/font (Playfair + Inter) entegrasyonu
+3. `src/lib/utils.ts` — `cn()` helper (clsx + tailwind-merge)
+4. `src/components/ui/button.tsx` — primary, secondary, ghost, icon variants
+5. `src/components/ui/input.tsx` — label + icon + helper
+6. `src/components/ui/card.tsx` — base + glass variants
+7. `src/components/ui/badge.tsx` — variants
+8. `src/components/layout/header.tsx`
+9. `src/components/layout/footer.tsx`
+10. `src/components/listing/listing-card.tsx`
+11. `src/components/hero/home-hero.tsx`
+
+> **NOT:** Tailwind v4'te `tailwind.config.ts` YOK. Tüm tema `globals.css` içinde `@theme` ile tanımlanır. Eğer Claude Code `tailwind.config.ts` oluşturmaya çalışırsa durdur, `globals.css`'e ekletmesi gerekir.
 
 Her component için Storybook YOKSA en azından `/app/[locale]/_dev/page.tsx` altında bir showcase sayfası kur — tüm variantları orada gör.
 

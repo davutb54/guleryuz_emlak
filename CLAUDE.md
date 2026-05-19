@@ -27,10 +27,10 @@
 
 | Katman | Teknoloji | Sebep |
 |--------|-----------|-------|
-| Framework | Next.js 15 (App Router) + TypeScript | SEO, tek proje, RSC |
+| Framework | Next.js 16 (App Router) + TypeScript + React 19.2 | SEO, tek proje, RSC, Turbopack default |
 | Veritabanı | SQLite + Prisma ORM | Bu trafik için yeterli, taşınabilir |
 | Auth | Auth.js v5 (NextAuth) | Email/şifre + Google |
-| UI Kit | Tailwind CSS + shadcn/ui | Lüks tasarım hızlı |
+| UI Kit | Tailwind CSS v4 + shadcn/ui | Lüks tasarım hızlı (v4: CSS-first @theme) |
 | Form | React Hook Form + Zod | Tip güvenli doğrulama |
 | i18n | next-intl | App Router en iyi entegrasyon |
 | Görsel | sharp + lokal dosya sistemi (`/public/uploads` veya `/data/uploads`) | VPS'te basit |
@@ -109,7 +109,7 @@ guleryuz/
 │   │   └── utils.ts
 │   ├── i18n/
 │   │   └── routing.ts
-│   └── middleware.ts            # auth + locale + rate limit
+│   └── proxy.ts                 # auth + locale + rate limit (Next.js 16: middleware.ts → proxy.ts)
 └── ecosystem.config.js          # PM2
 ```
 
@@ -414,8 +414,11 @@ model SiteSettings {
 ## 7. Yol Haritası — 6 Faz
 
 ### Faz 1: Temel Altyapı ✅ İLK YAPILACAK
-- [ ] Next.js 15 + TS + Tailwind kurulum
-- [ ] shadcn/ui init, tema renkleri (lacivert/altın)
+- [x] Next.js 16 + TS + Tailwind v4 kurulum (Turbopack default)
+- [ ] `package.json` scripts'e `--turbopack` ekle (dev + build)
+- [ ] `src/app/globals.css`'e `@theme` ile tasarım sistemi renkleri + fontları
+- [ ] Playfair Display + Inter `next/font/google` ile yükle
+- [ ] shadcn/ui init (CLI Tailwind v4'ü destekliyor)
 - [ ] Prisma + SQLite kurulum, ilk migration
 - [ ] next-intl kurulum, tr/en mesaj dosyaları
 - [ ] Auth.js v5 (email/şifre + Google)
@@ -494,7 +497,8 @@ model SiteSettings {
 ```bash
 # VPS'te ilk kurulum (Ubuntu 22.04+)
 sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Node 20.9+ gerekli (Next.js 16 minimum)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 sudo npm install -g pm2
 
@@ -516,24 +520,59 @@ sudo certbot --nginx -d guleryuzgayrimenkul.com -d www.guleryuzgayrimenkul.com
 
 ## 10. Sonraki Adım
 
-Faz 1'i başlat: `npx create-next-app@latest guleryuz --typescript --tailwind --app --src-dir`
+Faz 1'in ilk adımı tamam: Next.js 16 + TS + Tailwind kuruldu (kullanıcı tarafından elle).
 
-Ardından sırasıyla:
-1. shadcn init + tema
-2. Prisma init + ilk migration
-3. next-intl kurulum
-4. Auth.js v5 kurulum
-5. Header + Footer + ana sayfa iskelet
+Sıradaki adımlar:
+1. Turbopack'i geri aç (kurulumda `--no-turbopack` ile devre dışı bırakıldı). `package.json`'da `"dev": "next dev --turbopack"` ve `"build": "next build --turbopack"`.
+2. Tailwind config'i DESIGN_SYSTEM.md'deki renk paleti + tipografi ile güncelle.
+3. Playfair Display + Inter fontlarını `next/font/google` ile yükle.
+4. shadcn/ui init + base componentler (button, input, card).
+5. Prisma init + SQLite + ilk migration (schema.prisma — CLAUDE.md'deki taslaktan).
+6. next-intl kurulum + `messages/tr.json`, `messages/en.json` + `[locale]` route segmenti.
+7. Auth.js v5 (NextAuth) kurulum + Argon2id hashing.
+8. Header + Footer iskelet + ana sayfa Hero skeleton.
 
 ---
 
 ## Çalışma Prensipleri (Claude Code için)
 
 - Tüm yorumları ve UI metnini Türkçe yaz (kod isimleri İngilizce)
-- Server Components varsayılan, sadece gerektiğinde "use client"
+- Server Components varsayılan, sadece gerektiğinde `"use client"`
 - Server Actions tercih et (form submit, mutation)
 - Her yeni özellik için Zod şeması ÖNCE
 - Her admin endpoint'inde `auth()` kontrolü + role check
 - Önemli aksiyon = audit log
 - Migration'ları KESİNLİKLE elle düzenleme, `prisma migrate dev --name xxx` kullan
 - Her faz sonunda bu CLAUDE.md'yi güncelle
+
+### Next.js 16 Özel Notlar (ÖNEMLİ)
+
+- **Middleware dosya adı: `src/proxy.ts`** (eski `middleware.ts` değil). Export edilen fonksiyon adı `proxy`, runtime Node.js (Edge desteklenmiyor).
+- **Async params zorunlu**: Tüm dinamik route'larda (`[locale]`, `[slug]`, `[id]`) params artık Promise:
+  ```ts
+  export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+  }
+  ```
+  `searchParams` ve `cookies()`, `headers()` de aynı şekilde async.
+- **Cache opt-in**: Default'ta hiçbir fetch/component cache'lenmiyor. Cache istediğin yerde dosya/fonksiyon başına `"use cache"` koy. İlan detay sayfası, featured listings gibi yerlere ekle:
+  ```ts
+  "use cache";
+  export async function getFeaturedListings() { ... }
+  ```
+  Auth-bağlı veya kullanıcıya özel veriyi ASLA cache'leme.
+- **Turbopack default**: Hızlı dev experience için `next dev --turbopack` ve `next build --turbopack` kullan. Webpack özel pluginler gerekirse opt-out edilebilir.
+- **React Compiler stable**: `next.config.ts`'te `experimental.reactCompiler = true` aç. `useMemo`/`useCallback` çoğunlukla gereksiz, compiler hallediyor. Manuel memoization sadece kanıtlanmış bottleneck'lerde.
+- **`next/image` default değişiklikleri**: Quality default 75, formats default `[image/webp]`. Eskişehir fotoğrafları için optimize, daha agresif lazy loading.
+- **Node.js minimum 20.9+** — VPS'te Node 22 LTS kuracağız.
+- **Tailwind CSS v4 (CSS-first config)**: `tailwind.config.ts` artık kullanılmıyor (veya minimal). Tüm tema `src/app/globals.css` içinde `@theme { ... }` bloğu altında CSS değişkenleri olarak tanımlanıyor:
+  ```css
+  @import "tailwindcss";
+  @theme {
+    --color-navy-900: #0A1628;
+    --color-gold-500: #D4A744;
+    --font-display: "Playfair Display", serif;
+  }
+  ```
+  Bu tanım `bg-navy-900`, `text-gold-500`, `font-display` utility class'larını otomatik üretir. DESIGN_SYSTEM.md'de tam liste var.
+- **shadcn/ui Tailwind v4 desteği**: CLI v4'ü destekliyor (`npx shadcn@latest init` v4'ü algılar). Component'ler CSS variable tabanlı çalışır.
