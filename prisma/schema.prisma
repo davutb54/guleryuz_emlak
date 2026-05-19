@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  AGENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ListingCategory {
+  HOUSE
+  LAND
+  FIELD
+  SHOP
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String?
+  name             String
+  phone            String?
+  avatar           String?
+  role             Role      @default(USER)
+  emailVerified    DateTime?
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  listings      Listing[]      @relation("AgentListings")
+  favorites     Favorite[]
+  comments      Comment[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  sessions      Session[]
+  searchAlerts  SearchAlert[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expires   DateTime
+  ipAddress String?
+  userAgent String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Listing {
+  id            String          @id @default(cuid())
+  slug          String          @unique
+  category      ListingCategory
+  type          ListingType
+  status        ListingStatus   @default(DRAFT)
+
+  titleTr       String
+  titleEn       String?
+  descriptionTr String
+  descriptionEn String?
+
+  price         Decimal
+  currency      String          @default("TRY")
+
+  city          String          @default("Eskişehir")
+  district      String
+  neighborhood  String?
+  address       String?
+  latitude      Float?
+  longitude     Float?
+
+  area          Float
+  netArea       Float?
+
+  rooms          String?
+  bathrooms      Int?
+  buildingAge    Int?
+  floor          Int?
+  totalFloors    Int?
+  heating        String?
+  furnished      Boolean?
+  hasBalcony     Boolean?
+  hasElevator    Boolean?
+  hasParking     Boolean?
+  hasSecurity    Boolean?
+  hasPool        Boolean?
+  inSite         Boolean?
+  facade         String?
+  creditEligible Boolean?
+  deedStatus     String?
+
+  zoningStatus String?
+  kaks         Float?
+  taks         Float?
+  islandNumber String?
+  parcelNumber String?
+
+  ceilingHeight   Float?
+  storefrontWidth Float?
+
+  virtualTourUrl String?
+  featured       Boolean  @default(false)
+  verified       Boolean  @default(false)
+  viewCount      Int      @default(0)
+
+  agentId String
+  agent   User   @relation("AgentListings", fields: [agentId], references: [id])
+
+  images       ListingImage[]
+  features     ListingFeature[]
+  favorites    Favorite[]
+  comments     Comment[]
+  priceHistory PriceHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, type, status])
+  @@index([city, district])
+  @@index([price])
+}
+
+model ListingImage {
+  id        String  @id @default(cuid())
+  listingId String
+  url       String
+  order     Int     @default(0)
+  alt       String?
+  isPrimary Boolean @default(false)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model ListingFeature {
+  id        String  @id @default(cuid())
+  listingId String
+  key       String
+  valueTr   String
+  valueEn   String?
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  listingId String
+  price     Decimal
+  changedAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  content   String
+  rating    Int?
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  titleTr   String
+  titleEn   String?
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SearchAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  filters   String
+  frequency String   @default("instant")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GalleryItem {
+  id            String    @id @default(cuid())
+  type          String
+  url           String
+  thumbnail     String?
+  titleTr       String?
+  titleEn       String?
+  descriptionTr String?
+  descriptionEn String?
+  category      String?
+  date          DateTime?
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  metadata  String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model SiteSettings {
+  id           Int      @id @default(1)
+  contactEmail String
+  contactPhone String
+  address      String
+  workingHours String
+  socialLinks  String
+  aboutTr      String?
+  aboutEn      String?
+  updatedAt    DateTime @updatedAt
+}

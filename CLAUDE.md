@@ -1,5 +1,7 @@
 # Güleryüz Gayrimenkul — Proje Brief (CLAUDE.md)
 
+> **Son Güncelleme: 2026-05-19 — Faz 1 tamamlandı ✅**
+
 > Bu dosya Claude Code için proje bağlamıdır. Her oturumda otomatik okunur.
 > Proje hakkındaki TÜM kararlar, mimari, yol haritası burada tutulur.
 > Yeni kararlar alındıkça bu dosya güncellenmelidir.
@@ -109,7 +111,7 @@ guleryuz/
 │   │   └── utils.ts
 │   ├── i18n/
 │   │   └── routing.ts
-│   └── proxy.ts                 # auth + locale + rate limit (Next.js 16: middleware.ts → proxy.ts)
+│   └── middleware.ts            # auth + locale + rate limit
 └── ecosystem.config.js          # PM2
 ```
 
@@ -415,17 +417,17 @@ model SiteSettings {
 
 ### Faz 1: Temel Altyapı ✅ İLK YAPILACAK
 - [x] Next.js 16 + TS + Tailwind v4 kurulum (Turbopack default)
-- [ ] `package.json` scripts'e `--turbopack` ekle (dev + build)
-- [ ] `src/app/globals.css`'e `@theme` ile tasarım sistemi renkleri + fontları
-- [ ] Playfair Display + Inter `next/font/google` ile yükle
-- [ ] shadcn/ui init (CLI Tailwind v4'ü destekliyor)
-- [ ] Prisma + SQLite kurulum, ilk migration
-- [ ] next-intl kurulum, tr/en mesaj dosyaları
-- [ ] Auth.js v5 (email/şifre + Google)
-- [ ] Argon2 password hashing
-- [ ] Layout, Header (logo+menü), Footer
-- [ ] Ana sayfa hero + featured listings placeholder
-- [ ] `.env.example`, README
+- [x] `package.json` scripts'e `--turbopack` ekle (dev + build)
+- [x] `src/app/globals.css`'e `@theme` ile tasarım sistemi renkleri + fontları
+- [x] Playfair Display + Inter `next/font/google` ile yükle
+- [x] shadcn/ui init (CLI Tailwind v4'ü destekliyor)
+- [x] Prisma + SQLite kurulum, ilk migration
+- [x] next-intl kurulum, tr/en mesaj dosyaları
+- [x] Auth.js v5 (email/şifre + Google)
+- [x] Argon2 password hashing
+- [x] Layout, Header (logo+menü), Footer
+- [x] Ana sayfa hero + featured listings placeholder
+- [x] `.env.example`, README
 
 ### Faz 2: İlan Sistemi Çekirdeği
 - [ ] Listing CRUD (admin)
@@ -520,17 +522,17 @@ sudo certbot --nginx -d guleryuzgayrimenkul.com -d www.guleryuzgayrimenkul.com
 
 ## 10. Sonraki Adım
 
-Faz 1'in ilk adımı tamam: Next.js 16 + TS + Tailwind kuruldu (kullanıcı tarafından elle).
+**Faz 1 tamamlandı (2026-05-19).** Sıradaki: **Faz 2 — İlan Sistemi Çekirdeği.**
 
-Sıradaki adımlar:
-1. Turbopack'i geri aç (kurulumda `--no-turbopack` ile devre dışı bırakıldı). `package.json`'da `"dev": "next dev --turbopack"` ve `"build": "next build --turbopack"`.
-2. Tailwind config'i DESIGN_SYSTEM.md'deki renk paleti + tipografi ile güncelle.
-3. Playfair Display + Inter fontlarını `next/font/google` ile yükle.
-4. shadcn/ui init + base componentler (button, input, card).
-5. Prisma init + SQLite + ilk migration (schema.prisma — CLAUDE.md'deki taslaktan).
-6. next-intl kurulum + `messages/tr.json`, `messages/en.json` + `[locale]` route segmenti.
-7. Auth.js v5 (NextAuth) kurulum + Argon2id hashing.
-8. Header + Footer iskelet + ana sayfa Hero skeleton.
+Faz 2 sırası:
+1. `prisma/seed.ts` — ilk SUPER_ADMIN kullanıcısı oluşturma scripti.
+2. `src/lib/validations/listing.ts` — Zod şeması (Listing create/update).
+3. Admin ilan CRUD: `src/app/[locale]/admin/ilanlar/` — liste, yeni ilan formu, düzenleme.
+4. Sharp ile fotoğraf upload API: `src/app/api/upload/route.ts`.
+5. Slug otomatik üretimi helper.
+6. İlan listeleme sayfası (`/ilanlar`) — filtre + sayfalama.
+7. İlan detay sayfası (`/ilan/[slug]`) — galeri, özellikler, harita placeholder.
+8. Görüntülenme sayacı (Server Action).
 
 ---
 
@@ -547,7 +549,7 @@ Sıradaki adımlar:
 
 ### Next.js 16 Özel Notlar (ÖNEMLİ)
 
-- **Middleware dosya adı: `src/proxy.ts`** (eski `middleware.ts` değil). Export edilen fonksiyon adı `proxy`, runtime Node.js (Edge desteklenmiyor).
+- **Middleware dosya adı: `src/middleware.ts`** (standart Next.js, `proxy.ts` değil). next-intl middleware + ileride auth guard eklenecek.
 - **Async params zorunlu**: Tüm dinamik route'larda (`[locale]`, `[slug]`, `[id]`) params artık Promise:
   ```ts
   export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
@@ -576,3 +578,77 @@ Sıradaki adımlar:
   ```
   Bu tanım `bg-navy-900`, `text-gold-500`, `font-display` utility class'larını otomatik üretir. DESIGN_SYSTEM.md'de tam liste var.
 - **shadcn/ui Tailwind v4 desteği**: CLI v4'ü destekliyor (`npx shadcn@latest init` v4'ü algılar). Component'ler CSS variable tabanlı çalışır.
+
+---
+
+## 11. Karar Geçmişi
+
+Faz 1'de planlananın dışına çıkan veya dikkat gerektiren teknik kararlar:
+
+### Prisma 7.x — Yeni Mimari (Planlanmamıştı)
+- Kurulan sürüm **Prisma 7.8.0** (planlanan 5.x/6.x değil).
+- Yeni config: `prisma.config.ts` (datasource URL buradan okunuyor), `schema.prisma`'da `url` yok.
+- Generator: `provider = "prisma-client"` + `output = "../src/generated/prisma"` → import yolu `@/generated/prisma/client`.
+- **SQLite için zorunlu driver adapter:** `@prisma/adapter-better-sqlite3` + `better-sqlite3` paketi kuruldu. `new PrismaClient({ adapter })` ile başlatılıyor.
+- `dotenv` paketi `prisma.config.ts` için dev bağımlılığı olarak eklendi.
+
+### @node-rs/argon2 (argon2 yerine)
+- CLAUDE.md'de `argon2` paketi planlanmıştı; Windows geliştirme ortamında node-gyp native build sorunu yaşanabileceğinden **`@node-rs/argon2`** (Rust tabanlı, NAPI) tercih edildi.
+- API aynı: `hash()` + `verify()`. VPS'te (Linux) da sorunsuz çalışır.
+- CLAUDE.md Bölüm 3'teki "Şifre hash: `argon2` paketi" notu güncellenmeli.
+
+### Auth.js v5 — JWT Strateji (Database Adapter Kullanılmadı)
+- Prisma 7 driver adapter ile `@auth/prisma-adapter` uyumluluğu belirsiz olduğundan **JWT strateji** seçildi.
+- Oturumlar cookie'de (HttpOnly JWT), DB'de Session tablosu şimdilik kullanılmıyor.
+- Google OAuth: yalnızca DB'de kaydı olan e-posta ile giriş yapılabiliyor (`signIn` callback ile kontrol).
+- `AUTH_SECRET` `.env`'de mevcut; `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` henüz boş.
+
+### shadcn/ui — Manuel Kurulum
+- `npx shadcn@latest init` interaktif olduğu için `components.json` manuel oluşturuldu.
+- `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`, `@radix-ui/react-slot` elle kuruldu.
+- `button.tsx`, `input.tsx`, `card.tsx` `npx shadcn@latest add … --yes` ile eklendi.
+- `globals.css`'e shadcn CSS değişken katmanı eklendi (`--color-primary` → gold-500, `--color-card` → navy-850 vb.).
+
+### middleware.ts (proxy.ts değil)
+- CLAUDE.md'de `src/proxy.ts` yazıyordu; Next.js standart middleware dosyası `src/middleware.ts`'dir. Düzeltildi.
+
+### next-intl Navigation Helper
+- `src/i18n/navigation.ts` — `createNavigation(routing)` ile locale-aware `Link`, `usePathname`, `useRouter` export edildi.
+- Tüm iç linkler bu `Link` component'inden geçiyor.
+
+### Hero — Geçici CSS Gradient Arka Plan
+- Referans tasarımda (06-web-home-hero.png) tam sayfa property fotoğrafı var.
+- Faz 1'de gerçek fotoğraf olmadığından `radial-gradient` CSS arka plan kullanıldı.
+- Faz 2'de `/public/images/hero-bg.jpg` eklenince `next/image` + overlay ile değiştirilecek.
+
+### Sosyal Medya İkonları — Geçici
+- `lucide-react` Instagram / Facebook / YouTube ikonları içermiyor.
+- Footer'da geçici olarak `Camera`, `Users`, `Play` ikonları kullanıldı.
+- Kalıcı çözüm: `@iconify/react` veya inline SVG. Faz 6'da yapılacak.
+
+---
+
+## 12. Bilinen Sorunlar / TODO
+
+Sonraki fazlara bırakılan, şu an eksik olan maddeler:
+
+### Kritik (Faz 2 başında yapılmalı)
+- [ ] **`prisma/seed.ts` yok** — İlk SUPER_ADMIN kullanıcısı oluşturma scripti eksik. DB'ye elle kullanıcı eklenemez.
+- [ ] **`.gitignore` kontrolü** — `prisma/dev.db`, `src/generated/`, `.env` gitignore'da olmalı. Kontrol edilmedi.
+- [ ] **`public/uploads/` klasörü yok** — Fotoğraf upload için gerekli; Faz 2'de oluşturulacak.
+- [ ] **Route grupları kurulmadı** — `[locale]/(public)/`, `[locale]/(auth)/` grupları henüz yok; `page.tsx` düz `[locale]/` altında.
+
+### Önemli (Faz 2–3)
+- [ ] **Logo placeholder** — Header ve Footer'da metin tabanlı logo var. `/public/brand/logo.svg` eklenmeli.
+- [ ] **Hero arka plan fotoğrafı** — CSS gradient geçici; gerçek property fotoğrafı eklenecek.
+- [ ] **`src/lib/rate-limit.ts` yok** — Login rate limiting (5/15 dk) Faz 2'de eklenmeli.
+- [ ] **`src/lib/audit.ts` yok** — Admin eylem audit log helper Faz 5'te eklenmeli.
+- [ ] **`src/lib/validations/` boş** — Zod şemaları Faz 2'de başlayacak.
+
+### Sonraya Bırakılanlar (Faz 5–6)
+- [ ] **`ecosystem.config.js` yok** — PM2 config Faz 6 deployment'ta yazılacak.
+- [ ] **`README.md` yok** — Kurulum talimatları yazılmamış.
+- [ ] **Google OAuth test edilmedi** — `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` boş.
+- [ ] **Auth.js v5 DB Session entegrasyonu** — Şu an JWT. Gerekirse `@auth/prisma-adapter` Prisma 7 uyumu araştırılacak.
+- [ ] **Sosyal medya ikonları** — Footer'daki geçici ikonlar gerçek SVG/iconify ile değiştirilecek.
+- [ ] **CLAUDE.md Bölüm 3** — "Şifre hash: `argon2` paketi" → `@node-rs/argon2` olarak güncellenmeli.
