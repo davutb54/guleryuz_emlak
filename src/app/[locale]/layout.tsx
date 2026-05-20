@@ -3,8 +3,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
 
 export const metadata: Metadata = {
   title: "Güleryüz Gayrimenkul — Eskişehir",
@@ -33,9 +31,7 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <Header />
-      <main className="flex-1">{children}</main>
-      <Footer />
+      {children}
     </NextIntlClientProvider>
   );
 }

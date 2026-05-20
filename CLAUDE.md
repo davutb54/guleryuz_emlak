@@ -1,6 +1,6 @@
 # Güleryüz Gayrimenkul — Proje Brief (CLAUDE.md)
 
-> **Son Güncelleme: 2026-05-19 — Faz 1 tamamlandı ✅**
+> **Son Güncelleme: 2026-05-20 — Faz 2 tamamen tamamlandı ✅ — Faz 3 sırada**
 
 > Bu dosya Claude Code için proje bağlamıdır. Her oturumda otomatik okunur.
 > Proje hakkındaki TÜM kararlar, mimari, yol haritası burada tutulur.
@@ -39,7 +39,7 @@
 | Harita | Leaflet + OpenStreetMap | Ücretsiz |
 | Email | Resend veya Nodemailer + SMTP | Bildirim ve iletişim formu |
 | Grafik (admin) | Recharts | Dashboard istatistikleri |
-| Şifre hash | Argon2id (`argon2` paketi) | bcrypt'ten güvenli |
+| Şifre hash | Argon2id (`@node-rs/argon2` paketi) | bcrypt'ten güvenli, Windows/Linux NAPI native |
 | Process | PM2 | VPS'te kalıcı çalışma |
 | Reverse proxy | Nginx | SSL, statik cache |
 | SSL | Certbot (Let's Encrypt) | Ücretsiz |
@@ -429,14 +429,21 @@ model SiteSettings {
 - [x] Ana sayfa hero + featured listings placeholder
 - [x] `.env.example`, README
 
-### Faz 2: İlan Sistemi Çekirdeği
-- [ ] Listing CRUD (admin)
-- [ ] Çoklu dil destekli form (TR/EN tab)
-- [ ] Sharp ile fotoğraf upload + resize + WebP
-- [ ] İlan listeleme sayfası (filtre + sayfalama)
-- [ ] İlan detay sayfası (galeri carousel, harita, özellikler)
-- [ ] Slug otomatik üretimi (`modern-villa-tepebasi-3-1`)
-- [ ] Görüntülenme sayacı
+### Faz 2: İlan Sistemi Çekirdeği ✅ TAMAMLANDI
+- [x] `prisma/seed.ts` — SUPER_ADMIN + SiteSettings seed scripti (`npm run db:seed`)
+- [x] Route grupları `[locale]/(public)/` ve `[locale]/(auth)/` kuruldu
+- [x] `public/uploads/` klasörü oluşturuldu
+- [x] `DATABASE_URL` düzeltildi (`file:./prisma/dev.db`), migration yeniden uygulandı
+- [x] `src/lib/validations/listing.ts` — Zod şeması (Listing create/update)
+- [x] `src/lib/slug.ts` — slug otomatik üretimi helper
+- [x] Admin ilan CRUD: `src/app/[locale]/admin/ilanlar/` — liste, yeni ilan formu, düzenleme
+- [x] Sharp ile fotoğraf upload API: `src/app/api/upload/route.ts`
+- [x] İlan listeleme sayfası (`/ilanlar`) — filtre + sayfalama
+- [x] İlan detay sayfası (`/ilan/[slug]`) — galeri, özellikler, harita placeholder
+- [x] Görüntülenme sayacı (Server Action)
+- [x] Giriş sayfası (`/giris`) — e-posta/şifre formu, hata mesajları
+- [x] Kayıt sayfası (`/kayit`) — yeni kullanıcı oluşturma
+- [x] Kayıt API: `src/app/api/auth/register/route.ts`
 
 ### Faz 3: Gelişmiş Arama
 - [ ] Dinamik filtre paneli (kategori bazlı alanlar)
@@ -522,17 +529,14 @@ sudo certbot --nginx -d guleryuzgayrimenkul.com -d www.guleryuzgayrimenkul.com
 
 ## 10. Sonraki Adım
 
-**Faz 1 tamamlandı (2026-05-19).** Sıradaki: **Faz 2 — İlan Sistemi Çekirdeği.**
+**Faz 2 tamamlandı (2026-05-20).** Faz 3: Gelişmiş Arama sırada.
 
-Faz 2 sırası:
-1. `prisma/seed.ts` — ilk SUPER_ADMIN kullanıcısı oluşturma scripti.
-2. `src/lib/validations/listing.ts` — Zod şeması (Listing create/update).
-3. Admin ilan CRUD: `src/app/[locale]/admin/ilanlar/` — liste, yeni ilan formu, düzenleme.
-4. Sharp ile fotoğraf upload API: `src/app/api/upload/route.ts`.
-5. Slug otomatik üretimi helper.
-6. İlan listeleme sayfası (`/ilanlar`) — filtre + sayfalama.
-7. İlan detay sayfası (`/ilan/[slug]`) — galeri, özellikler, harita placeholder.
-8. Görüntülenme sayacı (Server Action).
+Faz 3 sırası:
+1. Leaflet harita — İlan detay sayfasında konum gösterimi
+2. İlanlar listesinde harita görünümü (opsiyonel)
+3. Dinamik filtre paneli geliştirme (mobil drawer)
+4. URL search params tam senkronu
+5. Arama önerileri (basit)
 
 ---
 
@@ -626,6 +630,48 @@ Faz 1'de planlananın dışına çıkan veya dikkat gerektiren teknik kararlar:
 - Footer'da geçici olarak `Camera`, `Users`, `Play` ikonları kullanıldı.
 - Kalıcı çözüm: `@iconify/react` veya inline SVG. Faz 6'da yapılacak.
 
+### DATABASE_URL Path Düzeltmesi (Faz 2 başı)
+- `.env`'de `file:./dev.db` → proje köküne yazıyordu; `db.ts` `prisma/dev.db` bekliyordu.
+- Düzeltme: `DATABASE_URL="file:./prisma/dev.db"` — artık her iki taraf `prisma/dev.db` kullanıyor.
+- Migration yeniden uygulandı: `20260519113028_init`.
+
+### tsx + db:seed Script (Faz 2)
+- `tsx` devDependency olarak kuruldu (TypeScript seed çalıştırma).
+- `package.json`'a `"db:seed": "tsx prisma/seed.ts"` scripti ve `"prisma": { "seed": "..." }` eklendi.
+- Seed admin: `admin@guleryuzgayrimenkul.com` — üretimde şifre değiştirilmeli.
+
+### Faz 2: Sharp + WebP Görsel Pipeline
+- Upload API (`/api/upload`) doğrudan WebP'e dönüştürüyor; orijinal dosya disk'e yazılmıyor.
+- 3 çıktı: full (1920×1080 max, quality 82), thumbnail (480×360 crop, quality 70), DB kaydı.
+- `sharp().metadata()` ile gerçek görsel doğrulaması yapılıyor (MIME spoof koruması).
+- EXIF otomatik temizleniyor (`.rotate()` yönteminin yan etkisi).
+- Dosyalar `/public/uploads/{hex}.webp` ve `/public/uploads/{hex}_thumb.webp` olarak kaydediliyor.
+
+### Faz 2: Server Component vs Client Component Ayrımı
+- `ilanlar/page.tsx` Server Component — `onChange` event handler geçirilemez.
+- Sıralama `<select>`'i ayrı `SortSelect` Client Component'ine çıkarıldı (`src/components/listing/sort-select.tsx`).
+- Kural: Server Component'ten Client Component'e geçen her prop serileştirilebilir olmalı (fonksiyon geçirilemez).
+
+### Faz 2: Zod v4 + react-hook-form Uyum Sorunu
+- `@hookform/resolvers` v5 kuruldu (Zod v4 için zorunlu).
+- `zodResolver(schema)` dönüş tipi `Resolver<T>` ile uyumsuz; `as any` cast gerekiyor.
+- `onSubmit = async (data: any)` — form submit handler'da da tip cast gerekiyor.
+- Bu bilinen bir upstream sorunu; `@hookform/resolvers` yeni sürümüyle düzelecek.
+
+### Faz 2: View Counter StrictMode Koruması
+- React StrictMode dev modunda effect'leri çift çalıştırıyor.
+- `useRef(false)` + `called.current = true` pattern ile ilk render'da tek increment garantilendi.
+- Prod'da StrictMode çift çalışmaz; bu yalnızca dev kalitesini korumak için.
+
+### Faz 2: Admin Silme Butonu — İki Adımlı Onay
+- `DeleteListingButton` — ilk tıkta "Emin misin?" moduna geçiyor, 3 saniye sonra sıfırlanıyor.
+- İkinci tıkta `deleteListing(id)` Server Action çağrılıyor.
+- `useTransition` ile optimistik UI: buton disabled + spinner gösteriliyor.
+
+### Faz 2: Auth redirect Locale Prefix
+- `src/lib/auth.ts`'te `pages.signIn: "/tr/giris"` hardcoded.
+- Çok dilli senaryoda `/en/login` desteği gerekirse locale-aware redirect yazılmalı (Faz 6).
+
 ---
 
 ## 12. Bilinen Sorunlar / TODO
@@ -633,17 +679,21 @@ Faz 1'de planlananın dışına çıkan veya dikkat gerektiren teknik kararlar:
 Sonraki fazlara bırakılan, şu an eksik olan maddeler:
 
 ### Kritik (Faz 2 başında yapılmalı)
-- [ ] **`prisma/seed.ts` yok** — İlk SUPER_ADMIN kullanıcısı oluşturma scripti eksik. DB'ye elle kullanıcı eklenemez.
-- [ ] **`.gitignore` kontrolü** — `prisma/dev.db`, `src/generated/`, `.env` gitignore'da olmalı. Kontrol edilmedi.
-- [ ] **`public/uploads/` klasörü yok** — Fotoğraf upload için gerekli; Faz 2'de oluşturulacak.
-- [ ] **Route grupları kurulmadı** — `[locale]/(public)/`, `[locale]/(auth)/` grupları henüz yok; `page.tsx` düz `[locale]/` altında.
+- [x] **`prisma/seed.ts`** — Tamamlandı. `npm run db:seed` ile çalışır.
+- [x] **`.gitignore` kontrolü** — Tamamlandı. `prisma/dev.db`, `src/generated/prisma`, `.env` var.
+- [x] **`public/uploads/` klasörü** — Oluşturuldu.
+- [x] **Route grupları** — `[locale]/(public)/` ve `[locale]/(auth)/` kuruldu.
 
-### Önemli (Faz 2–3)
+### Önemli (Faz 3+)
 - [ ] **Logo placeholder** — Header ve Footer'da metin tabanlı logo var. `/public/brand/logo.svg` eklenmeli.
 - [ ] **Hero arka plan fotoğrafı** — CSS gradient geçici; gerçek property fotoğrafı eklenecek.
-- [ ] **`src/lib/rate-limit.ts` yok** — Login rate limiting (5/15 dk) Faz 2'de eklenmeli.
+- [ ] **`src/lib/rate-limit.ts` yok** — Login rate limiting (5/15 dk) Faz 3'te eklenmeli.
 - [ ] **`src/lib/audit.ts` yok** — Admin eylem audit log helper Faz 5'te eklenmeli.
-- [ ] **`src/lib/validations/` boş** — Zod şemaları Faz 2'de başlayacak.
+- [x] **`src/lib/validations/listing.ts`** — Tamamlandı.
+- [ ] **Upload UI ilan formunda yok** — `/api/upload` çalışıyor ama `listing-form.tsx`'e bağlı değil. Admin ilan formuna resim yükleme UI'ı Faz 3'te eklenecek.
+- [ ] **Çoklu görsel carousel** — Detay sayfasında yalnızca `primaryImage` gösteriliyor. Birden fazla görsel carousel'i Faz 3'te eklenecek.
+- [ ] **Auth `signIn` sayfası locale hardcoded** — `auth.ts`'te `pages.signIn: "/tr/giris"`. İngilizce locale için Faz 6'da düzeltilecek.
+- [ ] **Mobil filtre paneli yok** — İlanlar sayfasında filtre sidebar'ı `hidden lg:block`. Mobil drawer Faz 3'te eklenecek.
 
 ### Sonraya Bırakılanlar (Faz 5–6)
 - [ ] **`ecosystem.config.js` yok** — PM2 config Faz 6 deployment'ta yazılacak.
@@ -651,4 +701,4 @@ Sonraki fazlara bırakılan, şu an eksik olan maddeler:
 - [ ] **Google OAuth test edilmedi** — `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` boş.
 - [ ] **Auth.js v5 DB Session entegrasyonu** — Şu an JWT. Gerekirse `@auth/prisma-adapter` Prisma 7 uyumu araştırılacak.
 - [ ] **Sosyal medya ikonları** — Footer'daki geçici ikonlar gerçek SVG/iconify ile değiştirilecek.
-- [ ] **CLAUDE.md Bölüm 3** — "Şifre hash: `argon2` paketi" → `@node-rs/argon2` olarak güncellenmeli.
+- [x] **CLAUDE.md Bölüm 3** — `@node-rs/argon2` olarak güncellendi.
