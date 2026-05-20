@@ -122,19 +122,44 @@ export const listingStatusSchema = z.object({
 
 // ─── Listeleme filtre şeması (public /ilanlar sayfası) ───────────────────────
 
+// URL'de tekrarlı param (?ilce=X&ilce=Y) → string[] dönüştürücü
+const strArray = z.preprocess(
+  (v) => {
+    if (!v) return [];
+    return Array.isArray(v) ? v.filter(Boolean) : [v];
+  },
+  z.array(z.string())
+);
+
 export const listingFilterSchema = z.object({
+  // Temel filtreler — her kategoride
   category: z.enum(LISTING_CATEGORIES).optional(),
   type: z.enum(LISTING_TYPES).optional(),
-  district: z.string().optional(),
-  rooms: z.string().optional(),
+  districts: strArray.optional(),  // multi-select ilçe
   minPrice: optNum(z.number().min(0)),
   maxPrice: optNum(z.number().min(0)),
   minArea: optNum(z.number().min(0)),
   maxArea: optNum(z.number().min(0)),
-  featured: z
-    .string()
-    .transform((v) => v === "true")
-    .optional(),
+
+  // HOUSE / SHOP kategorisi filtreleri
+  rooms: strArray.optional(),      // multi-select oda sayısı
+  minBathrooms: optNum(z.number().int().min(0)),
+  heating: z.string().optional(),
+
+  // Toggle özellikler (HOUSE / SHOP)
+  hasBalcony: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+  hasElevator: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+  hasParking: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+  hasSecurity: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+  hasPool: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+  inSite: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+  furnished: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
+
+  // LAND / FIELD kategorisi filtreleri
+  zoningStatus: z.string().optional(),
+
+  // Sayfalama & sıralama
+  featured: z.preprocess((v) => v === "true" || v === true, z.boolean()).optional(),
   page: z.preprocess((v) => Number(v) || 1, z.number().int().min(1)).default(1),
   limit: z.preprocess(
     (v) => Math.min(Number(v) || 12, 48),
@@ -153,3 +178,24 @@ export type ListingFilterInput = z.infer<typeof listingFilterSchema>;
 export type ListingCategory = (typeof LISTING_CATEGORIES)[number];
 export type ListingType = (typeof LISTING_TYPES)[number];
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
+
+// Filtre paneli için boş başlangıç state'i
+export const EMPTY_FILTER_STATE: Partial<ListingFilterInput> = {
+  category: undefined,
+  type: undefined,
+  districts: [],
+  rooms: [],
+  minPrice: undefined,
+  maxPrice: undefined,
+  minArea: undefined,
+  maxArea: undefined,
+  heating: undefined,
+  zoningStatus: undefined,
+  hasBalcony: undefined,
+  hasElevator: undefined,
+  hasParking: undefined,
+  hasSecurity: undefined,
+  hasPool: undefined,
+  inSite: undefined,
+  furnished: undefined,
+};

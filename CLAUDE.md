@@ -1,6 +1,6 @@
 # Güleryüz Gayrimenkul — Proje Brief (CLAUDE.md)
 
-> **Son Güncelleme: 2026-05-20 — Faz 2 tamamen tamamlandı ✅ — Faz 3 sırada**
+> **Son Güncelleme: 2026-05-20 — Faz 3 tamamlandı ✅ — Faz 4 sırada**
 
 > Bu dosya Claude Code için proje bağlamıdır. Her oturumda otomatik okunur.
 > Proje hakkındaki TÜM kararlar, mimari, yol haritası burada tutulur.
@@ -445,12 +445,15 @@ model SiteSettings {
 - [x] Kayıt sayfası (`/kayit`) — yeni kullanıcı oluşturma
 - [x] Kayıt API: `src/app/api/auth/register/route.ts`
 
-### Faz 3: Gelişmiş Arama
-- [ ] Dinamik filtre paneli (kategori bazlı alanlar)
-- [ ] URL search params senkronu
-- [ ] Eskişehir ilçe/mahalle veri seti (JSON statik)
-- [ ] Leaflet harita ilanlar üzerinde
-- [ ] Arama önerileri (kullanıcı geçmişine göre — basit cosine similarity)
+### Faz 3: Gelişmiş Arama ✅ TAMAMLANDI
+- [x] Dinamik filtre paneli (kategori bazlı alanlar) — `filter-panel.tsx` + `filter-sheet.tsx`
+- [x] URL search params senkronu — `filter-utils.ts` + `use-listing-filters.ts`
+- [x] Eskişehir ilçe/mahalle veri seti (JSON statik) — `eskisehir-locations.json` + `eskisehir.ts`
+- [x] Mobil filtre bottom sheet — `@radix-ui/react-dialog` ile implementasyonu
+- [x] Leaflet harita ilanlar üzerinde — `listing-map.tsx` + `view-toggle.tsx`, `?gorunum=harita` URL param
+- [x] Çoklu görsel carousel (ilan detay sayfası) — `listing-gallery.tsx`, hero içinde thumbnail strip + prev/next
+- [x] Upload UI ilan formuna entegrasyon — `image-uploader.tsx` dropzone + thumbnail grid, `saveListingImages` action
+- [x] Arama önerileri → Benzer İlanlar olarak implemente edildi (`similar-listings.ts` + `similar-listings.tsx`)
 
 ### Faz 4: Kullanıcı Etkileşimi
 - [ ] Favori sistemi
@@ -529,14 +532,13 @@ sudo certbot --nginx -d guleryuzgayrimenkul.com -d www.guleryuzgayrimenkul.com
 
 ## 10. Sonraki Adım
 
-**Faz 2 tamamlandı (2026-05-20).** Faz 3: Gelişmiş Arama sırada.
+**Faz 4'e geçildi (2026-05-20).** Faz 3 tüm maddeleriyle tamamlandı.
 
-Faz 3 sırası:
-1. Leaflet harita — İlan detay sayfasında konum gösterimi
-2. İlanlar listesinde harita görünümü (opsiyonel)
-3. Dinamik filtre paneli geliştirme (mobil drawer)
-4. URL search params tam senkronu
-5. Arama önerileri (basit)
+Faz 4 başlangıç sırası (öncelik sırasıyla):
+1. Favori sistemi — `POST /api/favorites` + `FavoriteButton` client component + kalp ikonu ilan kartlarında
+2. Yorum sistemi — `Comment` modeli zaten şemada var; admin moderasyonu gerekiyor
+3. Paylaş butonları — WhatsApp/Instagram/X linkleri + Open Graph meta tag'leri
+4. Bildirim merkezi — in-app notification dropdown + email (Faz 4 sonuna)
 
 ---
 
@@ -672,6 +674,51 @@ Faz 1'de planlananın dışına çıkan veya dikkat gerektiren teknik kararlar:
 - `src/lib/auth.ts`'te `pages.signIn: "/tr/giris"` hardcoded.
 - Çok dilli senaryoda `/en/login` desteği gerekirse locale-aware redirect yazılmalı (Faz 6).
 
+### Faz 3: Eskişehir Lokasyon Hiyerarşisi — Static JSON
+- İlçe/mahalle verileri DB tablosu yerine `src/lib/data/eskisehir-locations.json` olarak tutuldu.
+- Sebep: Eskişehir odaklı proje, başka şehir eklenmeyecek; veri değişmez; admin CRUD UI gereksiz; JSON daha hızlı (DB round-trip yok); version-controlled.
+- `eskisehir.ts` — JSON'dan `ESKISEHIR_DISTRICTS`, `getNeighborhoods(district)`, `ESKISEHIR_LOCATIONS` türetiliyor.
+- 14 ilçe, Odunpazarı 28 mahalle + Tepebaşı 27 mahalle + 12 kırsal ilçe.
+
+### Faz 3: Filter Utils — Server/Client Boundary Ayrımı
+- `"use client"` olan bir dosyadan export edilen saf fonksiyonlar Server Component'te kullanılamaz.
+- Çözüm: `src/lib/filter-utils.ts` — `"use client"` YOK; `FilterState`, `parseFiltersFromUrl`, `buildFilterUrl`, `countActiveFilters` burada.
+- `src/hooks/use-listing-filters.ts` — `"use client"` sadece buraya; `useListingFilters()` hook + `filter-utils.ts`'ten re-export.
+- `ilanlar/page.tsx` (Server Component) → `filter-utils.ts`'ten import eder.
+- `filter-panel.tsx` (Client Component) → `filter-utils.ts` + `use-listing-filters.ts` ikisinden de import edebilir.
+
+### Faz 3: Benzer İlanlar — "use cache" + In-Memory Scoring
+- `getSimilarListings(params)` — `src/lib/similar-listings.ts`, `"use cache"` direktifi fonksiyon içinde.
+- Cache key: fonksiyon referansı + params (id, category, type, district, price, rooms). Aynı ilan → cache hit.
+- Prisma Decimal cache güvenliği: DB'den çekip `.toNumber()` yaptıktan sonra `number` olarak döndürülüyor. Böylece RSC serializasyonu sorunsuz.
+- ListingCard adapter: `getSimilarListings` → `price: number`; ListingCard `price: { toNumber(): number }` bekliyor → `{ toNumber: () => price }` wrapper.
+- Skor: aynı ilçe +3, kentsel komşu (Odunpazarı↔Tepebaşı) +1, fiyat ±%15 +2, aynı oda +2, ±1 oda +1.
+- Query: kategori+tip+durum sabit filtre, fiyat ±%30 aralığı, take 30, in-memory sort → top 4.
+- Yeni index gerekmedi — mevcut `[category, type, status]` + `[price]` indexleri yeterli.
+
+### Faz 3: Filtre Paneli Mimarisi
+- Local state (`useState<FilterState>`) → "Ara" butonu → `router.push(buildFilterUrl(state))` → Server Component yeni searchParams ile yeniden render → Prisma sorgusu.
+- Multi-select alanlar (districts, rooms): URL'de tekrar eden key: `?ilce=Odunpazarı&ilce=Tepebaşı`. Parse: `params.getAll("ilce")`. Build: `p.append("ilce", d)`.
+- İlçe değişince mahalle sıfırlanır: `toggleArray("districts", d)` içinde `neighborhoods: []` reset.
+- Koşullu mahalle bölümü: yalnızca `state.districts.length === 1` ve seçili ilçenin mahallesi varsa görünür.
+- Mobil: `@radix-ui/react-dialog` bottom sheet, max-h-[88vh], drag handle.
+- Desktop: `<aside hidden lg:flex>` sticky sidebar.
+- Suspense boundary zorunlu (`useSearchParams()` App Router gereksinimi).
+
+### Faz 3: Leaflet Harita — SSR Sorunu ve Çözümü
+- `react-leaflet` tarayıcı DOM API'sine bağımlı, Node.js'te çalışmaz → `ssr: false` zorunlu.
+- Next.js 16 kısıtı: `next/dynamic` ile `ssr: false` **yalnızca Client Component içinde** kullanılabilir.
+- Çözüm: `listing-map-client.tsx` (`"use client"`) → `dynamic(() => import('./listing-map'), { ssr: false })`. Page.tsx bu wrapper'ı import eder.
+- Leaflet popup CSS override: Leaflet'in kendi DOM tree'sine inject ettiği için Tailwind class'ları çalışmaz. `<style>` tag ile inline CSS kullanıldı.
+- `leaflet/dist/leaflet.css` import'u sadece Client Component'te yapılmalı.
+
+### Faz 3: View Toggle — URL Param Yaklaşımı
+- `?gorunum=harita` URL parametresi ile liste ↔ harita geçişi. Client state yok.
+- `ViewToggle` component prop tabanlı (`listUrl`, `mapUrl`, `currentView`) — hooks yok, Server Component olarak çalışıyor.
+- URL'de olduğu için back button çalışır, filtreler korunur, SEO dostu.
+- Harita görünümünde sayfalama anlamsız: koordinatı olan tüm aktif ilanlar çekiliyor (max 200), `take` parametresi harita için yüksek tutuldu.
+- Decimal → number dönüşümü harita veri hazırlamada kritik (RSC serializasyonu + `"use cache"` uyumu).
+
 ---
 
 ## 12. Bilinen Sorunlar / TODO
@@ -684,16 +731,16 @@ Sonraki fazlara bırakılan, şu an eksik olan maddeler:
 - [x] **`public/uploads/` klasörü** — Oluşturuldu.
 - [x] **Route grupları** — `[locale]/(public)/` ve `[locale]/(auth)/` kuruldu.
 
-### Önemli (Faz 3+)
+### Önemli (Faz 4+)
 - [ ] **Logo placeholder** — Header ve Footer'da metin tabanlı logo var. `/public/brand/logo.svg` eklenmeli.
 - [ ] **Hero arka plan fotoğrafı** — CSS gradient geçici; gerçek property fotoğrafı eklenecek.
-- [ ] **`src/lib/rate-limit.ts` yok** — Login rate limiting (5/15 dk) Faz 3'te eklenmeli.
+- [ ] **`src/lib/rate-limit.ts` yok** — Login rate limiting (5/15 dk) Faz 4'te eklenmeli.
 - [ ] **`src/lib/audit.ts` yok** — Admin eylem audit log helper Faz 5'te eklenmeli.
 - [x] **`src/lib/validations/listing.ts`** — Tamamlandı.
-- [ ] **Upload UI ilan formunda yok** — `/api/upload` çalışıyor ama `listing-form.tsx`'e bağlı değil. Admin ilan formuna resim yükleme UI'ı Faz 3'te eklenecek.
-- [ ] **Çoklu görsel carousel** — Detay sayfasında yalnızca `primaryImage` gösteriliyor. Birden fazla görsel carousel'i Faz 3'te eklenecek.
+- [x] **Upload UI ilan formunda** — `image-uploader.tsx` + `saveListingImages` action + `listing-form.tsx` entegrasyonu tamamlandı.
+- [x] **Çoklu görsel carousel** — `listing-gallery.tsx` ile tamamlandı (thumbnail strip + prev/next + klavye desteği).
 - [ ] **Auth `signIn` sayfası locale hardcoded** — `auth.ts`'te `pages.signIn: "/tr/giris"`. İngilizce locale için Faz 6'da düzeltilecek.
-- [ ] **Mobil filtre paneli yok** — İlanlar sayfasında filtre sidebar'ı `hidden lg:block`. Mobil drawer Faz 3'te eklenecek.
+- [x] **Mobil filtre paneli** — `filter-sheet.tsx`'te `@radix-ui/react-dialog` bottom sheet tamamlandı.
 
 ### Sonraya Bırakılanlar (Faz 5–6)
 - [ ] **`ecosystem.config.js` yok** — PM2 config Faz 6 deployment'ta yazılacak.
@@ -702,3 +749,40 @@ Sonraki fazlara bırakılan, şu an eksik olan maddeler:
 - [ ] **Auth.js v5 DB Session entegrasyonu** — Şu an JWT. Gerekirse `@auth/prisma-adapter` Prisma 7 uyumu araştırılacak.
 - [ ] **Sosyal medya ikonları** — Footer'daki geçici ikonlar gerçek SVG/iconify ile değiştirilecek.
 - [x] **CLAUDE.md Bölüm 3** — `@node-rs/argon2` olarak güncellendi.
+
+---
+
+## 13. AI Agnostik Notlar
+
+> Bu bölüm herhangi bir AI asistanın (Claude, GPT, Gemini, vb.) projeye sorunsuz dahil olabilmesi için yazılmıştır.
+
+### Projeye Başlamadan Önce Mutlaka Oku
+
+Bu proje belirli bir AI'a bağlı değildir. Yeni bir oturumda her AI şu sırayla okumalıdır:
+
+1. `CLAUDE.md` (bu dosya) — tüm mimari kararlar, yol haritası, karar geçmişi
+2. `DESIGN_SYSTEM.md` — renk paleti, tipografi, spacing, component stili
+3. `VISUAL_REFERENCES.md` — referans tasarım görselleri ve açıklamaları
+4. `PHASE_1_SUMMARY.md` — Faz 1'de yapılanlar, kurulum notları
+5. `PHASE_2_SUMMARY.md` — Faz 2'de yapılanlar, ilan sistemi, upload pipeline
+6. `PHASE_3_SUMMARY.md` — Faz 3'te yapılanlar, filtre sistemi, harita, carousel
+7. `[en son PHASE_N_SUMMARY.md]` — her faz sonunda oluşturulan özet
+
+### Kod Yazmadan Önce Zorunlu Adımlar
+
+1. Tüm yukarıdaki dosyaları oku
+2. `src/` dizinini tara: hangi component'ler var, hangileri eksik
+3. `prisma/schema.prisma`'yı oku: mevcut modeller ve ilişkiler
+4. `package.json`'u oku: kurulu paketler (tekrar kurmaya çalışma)
+5. Değiştireceğin dosyayı önce oku, sonra düzenle
+
+### Asla Yapma
+
+- `tailwind.config.ts` oluşturma — Tailwind v4: tema `globals.css` içinde `@theme {}` bloğunda
+- `middleware.ts` oluşturma — bu projede `src/middleware.ts` kullanılıyor (next-intl)
+- Raw SQL / `prisma.$queryRaw` kullanma — sadece Prisma ORM
+- Migration'ları elle düzenleme — `prisma migrate dev --name xxx` kullan
+- `.env` dosyasına dokunma — sadece `.env.example` güncellenebilir
+- `node_modules/`, `.next/`, `public/uploads/` klasörlerine dokunma
+- Gereksiz yere `"use client"` ekleme — Server Component varsayılan
+- Admin route'larını `auth()` kontrolü olmadan bırakma

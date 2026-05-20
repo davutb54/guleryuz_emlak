@@ -1,19 +1,17 @@
-export const ESKISEHIR_DISTRICTS = [
-  "Odunpazarı",
-  "Tepebaşı",
-  "Alpu",
-  "Beylikova",
-  "Çifteler",
-  "Günyüzü",
-  "Han",
-  "İnönü",
-  "Mahmudiye",
-  "Mihalgazi",
-  "Mihalıççık",
-  "Sarıcakaya",
-  "Seyitgazi",
-  "Sivrihisar",
-] as const;
+import locations from "./eskisehir-locations.json";
+
+// İlçe listesi JSON'dan türetilir — tek kaynak of truth
+export const ESKISEHIR_DISTRICTS = Object.keys(locations) as Array<keyof typeof locations>;
+
+// Verilen ilçenin mahallelerini döner; bilinmeyen ilçe için []
+export function getNeighborhoods(district: string): string[] {
+  return (locations as Record<string, string[]>)[district] ?? [];
+}
+
+// Tüm lokasyon haritası (ilçe → mahalle[])
+export const ESKISEHIR_LOCATIONS = locations as Record<string, string[]>;
+
+// ─── Filtre seçenekleri ───────────────────────────────────────────────────────
 
 export const ROOMS_OPTIONS = [
   "Stüdyo",

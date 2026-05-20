@@ -105,6 +105,32 @@ export async function deleteListing(id: string): Promise<ActionResult> {
   return { success: true };
 }
 
+export async function saveListingImages(
+  listingId: string,
+  images: { url: string; isPrimary: boolean; order: number }[]
+): Promise<ActionResult> {
+  const user = await getAuthorizedUser();
+  if (!user) return { success: false, error: "Yetkisiz erişim" };
+
+  // Mevcut görselleri sil, yenilerini ekle
+  await db.listingImage.deleteMany({ where: { listingId } });
+
+  if (images.length > 0) {
+    await db.listingImage.createMany({
+      data: images.map((img) => ({
+        listingId,
+        url: img.url,
+        isPrimary: img.isPrimary,
+        order: img.order,
+        alt: null,
+      })),
+    });
+  }
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
 export async function changeListingStatus(
   id: string,
   raw: unknown

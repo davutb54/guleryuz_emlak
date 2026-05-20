@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import Image from "next/image";
 import {
   MapPin,
   BedDouble,
@@ -18,6 +17,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import ViewCounter from "@/components/listing/view-counter";
+import ListingGallery from "@/components/listing/listing-gallery";
+import SimilarListings from "@/components/listing/similar-listings";
 import { Link } from "@/i18n/navigation";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -54,8 +55,10 @@ export default async function IlanDetayPage({
 
   if (!listing) notFound();
 
-  const primaryImage =
-    listing.images.find((i) => i.isPrimary) ?? listing.images[0];
+  const galleryImages = listing.images.map((img) => ({
+    url: img.url,
+    alt: img.alt,
+  }));
 
   const boolFeatures = [
     { label: "Balkon", value: listing.hasBalcony, icon: LayoutPanelTop },
@@ -71,25 +74,10 @@ export default async function IlanDetayPage({
       {/* View sayacı (invisible) */}
       <ViewCounter listingId={listing.id} />
 
-      {/* Hero görsel */}
-      <div className="relative h-[55vh] md:h-[65vh] bg-navy-800">
-        {primaryImage ? (
-          <Image
-            src={primaryImage.url}
-            alt={primaryImage.alt ?? listing.titleTr}
-            fill
-            priority
-            className="object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Maximize2 size={48} strokeWidth={1} className="text-navy-600" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-navy-900/20 to-transparent" />
-
+      {/* Hero görsel carousel */}
+      <ListingGallery images={galleryImages} title={listing.titleTr}>
         {/* Tip + kategori badge */}
-        <div className="absolute top-6 left-6 flex gap-2">
+        <div className="absolute top-6 left-6 z-10 flex gap-2">
           <span className="px-3 py-1.5 rounded-full bg-navy-900/70 backdrop-blur-sm text-xs font-semibold text-cream-100 uppercase tracking-wider">
             {TYPE_LABELS[listing.type]}
           </span>
@@ -99,11 +87,11 @@ export default async function IlanDetayPage({
         </div>
 
         {/* View count */}
-        <div className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-navy-900/70 backdrop-blur-sm text-xs text-silver-400">
+        <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-navy-900/70 backdrop-blur-sm text-xs text-silver-400">
           <Eye size={13} strokeWidth={1.5} />
           {listing.viewCount + 1} görüntülenme
         </div>
-      </div>
+      </ListingGallery>
 
       <div className="max-w-[1440px] mx-auto px-5 lg:px-16 -mt-16 relative pb-16">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -305,6 +293,18 @@ export default async function IlanDetayPage({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Benzer İlanlar */}
+      <div className="max-w-[1440px] mx-auto px-5 lg:px-16 pb-16">
+        <SimilarListings
+          id={listing.id}
+          category={listing.category as string}
+          type={listing.type as string}
+          district={listing.district}
+          price={listing.price.toNumber()}
+          rooms={listing.rooms}
+        />
       </div>
     </div>
   );

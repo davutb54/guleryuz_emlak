@@ -57,16 +57,29 @@ export default async function DuzenlePage({
       storefrontWidth: true,
       virtualTourUrl: true,
       featured: true,
+      images: {
+        orderBy: { order: "asc" },
+        select: { url: true, isPrimary: true, order: true },
+      },
     },
   });
 
   if (!listing) notFound();
 
-  // Prisma Decimal → number (Client Component'e geçmeden önce serialize et)
+  const { images, ...listingData } = listing;
+
   const formData: ListingFormData = {
-    ...listing,
-    price: listing.price.toNumber(),
+    ...listingData,
+    price: listingData.price.toNumber(),
   };
+
+  // Mevcut görseller → UploadedImage formatına çevir
+  const initialImages = images.map((img) => ({
+    url: img.url,
+    thumbnail: img.url.replace(".webp", "_thumb.webp"),
+    isPrimary: img.isPrimary,
+    order: img.order,
+  }));
 
   return (
     <div>
@@ -85,7 +98,7 @@ export default async function DuzenlePage({
         <p className="text-silver-500 text-sm mt-1 line-clamp-1">{listing.titleTr}</p>
       </div>
 
-      <ListingForm listing={formData} />
+      <ListingForm listing={formData} initialImages={initialImages} />
     </div>
   );
 }

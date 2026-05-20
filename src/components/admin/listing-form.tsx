@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@/i18n/navigation";
 import { listingCreateSchema, type ListingCreateInput } from "@/lib/validations/listing";
-import { createListing, updateListing } from "@/lib/actions/listing";
+import { createListing, updateListing, saveListingImages } from "@/lib/actions/listing";
+import ImageUploader, { type UploadedImage } from "@/components/admin/image-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -67,6 +68,7 @@ export interface ListingFormData {
 
 interface ListingFormProps {
   listing?: ListingFormData;
+  initialImages?: UploadedImage[];
 }
 
 // ─── Yardımcı bileşenler ─────────────────────────────────────────────────────
@@ -140,11 +142,12 @@ function CheckboxField({
 
 // ─── Ana form bileşeni ───────────────────────────────────────────────────────
 
-export default function ListingForm({ listing }: ListingFormProps) {
+export default function ListingForm({ listing, initialImages }: ListingFormProps) {
   const router = useRouter();
   const isEdit = !!listing;
   const [serverError, setServerError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"tr" | "en">("tr");
+  const [images, setImages] = useState<UploadedImage[]>(initialImages ?? []);
 
   const {
     register,
@@ -221,12 +224,22 @@ export default function ListingForm({ listing }: ListingFormProps) {
       ? await updateListing(listing.id, data)
       : await createListing(data);
 
-    if (result.success) {
-      router.push("/admin/ilanlar");
-    } else {
+    if (!result.success) {
       setServerError(result.error ?? "Bir hata oluştu");
       window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
+
+    // Görselleri kaydet (yeni ilan: result.data.id, düzenleme: listing.id)
+    const listingId = isEdit ? listing.id : (result as any).data?.id;
+    if (listingId) {
+      await saveListingImages(
+        listingId,
+        images.map((img) => ({ url: img.url, isPrimary: img.isPrimary, order: img.order }))
+      );
+    }
+
+    router.push("/admin/ilanlar");
   };
 
   return (
@@ -687,6 +700,15 @@ export default function ListingForm({ listing }: ListingFormProps) {
             className={inputClass}
           />
         </FormField>
+      </div>
+
+      {/* ─── Fotoğraflar ────────────────────────────────────────────────────── */}
+      <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6">
+        <SectionTitle>Fotoğraflar</SectionTitle>
+        <p className="text-xs text-silver-500 mb-4">
+          İlk yüklenen veya yıldız işaretlediğiniz fotoğraf ana görsel olur.
+        </p>
+        <ImageUploader value={images} onChange={setImages} />
       </div>
 
       {/* ─── Kaydet / İptal ─────────────────────────────────────────────────── */}
