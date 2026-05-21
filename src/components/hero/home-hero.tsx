@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Search, MapPin, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "@/i18n/navigation";
 
 const LISTING_TYPES = [
   { value: "", labelKey: "allTypes" },
@@ -22,10 +23,20 @@ const CATEGORIES = [
 export default function HomeHero() {
   const t = useTranslations("hero");
   const s = useTranslations("search");
+  const router = useRouter();
 
   const [listingType, setListingType] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
+
+  function handleSearch() {
+    const params = new URLSearchParams();
+    if (listingType) params.set("tur", listingType);
+    if (category) params.set("kategori", category);
+    if (location.trim()) params.set("ilce", location.trim());
+    const qs = params.toString();
+    router.push(qs ? `/ilanlar?${qs}` : "/ilanlar");
+  }
 
   return (
     <section className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center overflow-hidden px-5 py-20 md:px-8 lg:px-16">
@@ -122,6 +133,7 @@ export default function HomeHero() {
 
             {/* Ara butonu */}
             <button
+              onClick={handleSearch}
               className={cn(
                 "flex items-center justify-center gap-2 rounded-xl px-6 py-3",
                 "bg-gold-500 text-sm font-semibold text-navy-900",

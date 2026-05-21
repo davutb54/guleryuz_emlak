@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import { z } from "zod";
 import { db } from "./db";
 import { verifyPassword } from "./password";
+import { checkLoginRateLimit } from "./rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -22,6 +23,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
+        const rl = checkLoginRateLimit(parsed.data.email);
+        if (!rl.allowed) return null;
+
         const user = await db.user.findUnique({
           where: { email: parsed.data.email },
           select: {
@@ -31,10 +35,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             passwordHash: true,
             role: true,
             avatar: true,
+            banned: true,
           },
         });
 
         if (!user || !user.passwordHash) return null;
+        if (user.banned) return null;
 
         const isValid = await verifyPassword(
           parsed.data.password,
@@ -78,9 +84,18 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return token;
     },
 
-    session({ session, token }) {
+    async session({ session, token }) {
+      if (!token.id) return session;
+      const dbUser = await db.user.findUnique({
+        where: { id: token.id as string },
+        select: { banned: true, role: true },
+      });
+      if (!dbUser || dbUser.banned) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return { expires: session.expires } as any;
+      }
       session.user.id = token.id as string;
-      session.user.role = token.role as "USER" | "AGENT" | "ADMIN" | "SUPER_ADMIN";
+      session.user.role = dbUser.role as "USER" | "AGENT" | "ADMIN" | "SUPER_ADMIN";
       return session;
     },
   },

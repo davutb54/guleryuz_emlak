@@ -12,6 +12,8 @@ import {
   ClipboardList,
   LogOut,
   ChevronRight,
+  Mail,
+  Shield,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -19,6 +21,7 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   locale: string;
   user: { name?: string | null; email?: string | null; role?: string };
+  onNavigate?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -27,11 +30,13 @@ const NAV_ITEMS = [
   { href: "/admin/kullanicilar", label: "Kullanıcılar", icon: Users },
   { href: "/admin/yorumlar", label: "Yorumlar", icon: MessageSquare },
   { href: "/admin/galeri", label: "Galeri", icon: Image },
+  { href: "/admin/iletisim", label: "İletişim", icon: Mail },
   { href: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
+  { href: "/admin/2fa-kurulum", label: "2FA Güvenlik", icon: Shield },
   { href: "/admin/audit-log", label: "Denetim Günlüğü", icon: ClipboardList },
 ];
 
-export default function AdminSidebar({ user }: SidebarProps) {
+export default function AdminSidebar({ user, onNavigate }: SidebarProps) {
   const pathname = usePathname();
 
   function isActive(href: string, exact = false) {
@@ -40,7 +45,7 @@ export default function AdminSidebar({ user }: SidebarProps) {
   }
 
   return (
-    <aside className="w-64 flex flex-col bg-navy-950 border-r border-[var(--border-subtle)] shrink-0">
+    <aside className="w-64 h-full flex flex-col bg-navy-950 border-r border-[var(--border-subtle)] shrink-0">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)]">
         <span className="font-display text-gold-500 font-semibold tracking-wide text-sm uppercase">
@@ -57,6 +62,7 @@ export default function AdminSidebar({ user }: SidebarProps) {
               <li key={href}>
                 <Link
                   href={href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
                     active

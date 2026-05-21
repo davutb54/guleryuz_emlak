@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
 import sharp from "sharp";
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
@@ -17,6 +18,15 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user || !ALLOWED_ROLES.includes(session.user.role)) {
     return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+  }
+
+  // Rate limit: 30 yükleme / saat per kullanıcı
+  const rl = checkRateLimit(`upload:${session.user.id}`, 30, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Çok fazla yükleme isteği. Lütfen bir saat bekleyin." },
+      { status: 429 }
+    );
   }
 
   // Form verisi oku

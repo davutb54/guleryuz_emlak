@@ -12,6 +12,7 @@ import {
   generateUniqueSlug,
   generateUniqueSlugExcluding,
 } from "@/lib/slug";
+import { auditLog } from "@/lib/audit";
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -49,6 +50,11 @@ export async function createListing(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: { ...(parsed.data as any), slug, agentId: user.id },
     select: { id: true, slug: true },
+  });
+
+  await auditLog(user.id, "listing.create", "Listing", listing.id, {
+    title: parsed.data.titleTr,
+    slug: listing.slug,
   });
 
   revalidatePath("/", "layout");
@@ -92,6 +98,10 @@ export async function updateListing(
     data: { ...(parsed.data as any), slug },
   });
 
+  await auditLog(user.id, "listing.update", "Listing", id, {
+    title: parsed.data.titleTr ?? existing.titleTr,
+  });
+
   revalidatePath("/", "layout");
   return { success: true };
 }
@@ -100,7 +110,18 @@ export async function deleteListing(id: string): Promise<ActionResult> {
   const user = await getAuthorizedUser();
   if (!user) return { success: false, error: "Yetkisiz erişim" };
 
+  const listing = await db.listing.findUnique({
+    where: { id },
+    select: { titleTr: true, slug: true },
+  });
+
   await db.listing.delete({ where: { id } });
+
+  await auditLog(user.id, "listing.delete", "Listing", id, {
+    title: listing?.titleTr,
+    slug: listing?.slug,
+  });
+
   revalidatePath("/", "layout");
   return { success: true };
 }
@@ -145,6 +166,55 @@ export async function changeListingStatus(
     where: { id },
     data: { status: parsed.data.status },
   });
+
+  await auditLog(user.id, "listing.status_change", "Listing", id, {
+    status: parsed.data.status,
+  });
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
+export async function toggleFeatured(id: string): Promise<ActionResult> {
+  const user = await getAuthorizedUser();
+  if (!user) return { success: false, error: "Yetkisiz erişim" };
+
+  const listing = await db.listing.findUnique({ where: { id }, select: { featured: true, titleTr: true } });
+  if (!listing) return { success: false, error: "İlan bulunamadı" };
+
+  await db.listing.update({ where: { id }, data: { featured: !listing.featured } });
+
+  await auditLog(user.id, "listing.toggle_featured", "Listing", id, {
+    featured: !listing.featured,
+    title: listing.titleTr,
+  });
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
+export async function bulkListingAction(raw: unknown): Promise<ActionResult> {
+  const user = await getAuthorizedUser();
+  if (!user) return { success: false, error: "Yetkisiz erişim" };
+
+  const { z } = await import("zod");
+  const schema = z.object({
+    ids: z.array(z.string().min(1)).min(1),
+    action: z.enum(["activate", "archive", "delete"]),
+  });
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: "Geçersiz veri" };
+
+  const { ids, action } = parsed.data;
+
+  if (action === "delete") {
+    await db.listing.deleteMany({ where: { id: { in: ids } } });
+  } else {
+    const status = action === "activate" ? "ACTIVE" : "ARCHIVED";
+    await db.listing.updateMany({ where: { id: { in: ids } }, data: { status } });
+  }
+
+  await auditLog(user.id, `listing.bulk_${action}`, "Listing", null, { ids, count: ids.length });
 
   revalidatePath("/", "layout");
   return { success: true };

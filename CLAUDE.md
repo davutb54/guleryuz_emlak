@@ -1,6 +1,6 @@
 # Güleryüz Gayrimenkul — Proje Brief (CLAUDE.md)
 
-> **Son Güncelleme: 2026-05-20 — Faz 3 tamamlandı ✅ — Faz 4 sırada**
+> **Son Güncelleme: 2026-05-21 — Faz 5 tamamlandı + güvenlik sağlamlaştırması ✅ — Faz 6 sırada**
 
 > Bu dosya Claude Code için proje bağlamıdır. Her oturumda otomatik okunur.
 > Proje hakkındaki TÜM kararlar, mimari, yol haritası burada tutulur.
@@ -455,24 +455,42 @@ model SiteSettings {
 - [x] Upload UI ilan formuna entegrasyon — `image-uploader.tsx` dropzone + thumbnail grid, `saveListingImages` action
 - [x] Arama önerileri → Benzer İlanlar olarak implemente edildi (`similar-listings.ts` + `similar-listings.tsx`)
 
-### Faz 4: Kullanıcı Etkileşimi
-- [ ] Favori sistemi
-- [ ] Yorum sistemi (admin moderasyonlu)
-- [ ] Bildirim merkezi (in-app + email)
-- [ ] Profil sayfası
-- [ ] Arama alarmları (SearchAlert) + cron job (node-cron)
-- [ ] Paylaş butonları (Open Graph meta tag'leri kritik)
+### Faz 4: Kullanıcı Etkileşimi ✅ TAMAMLANDI
+- [x] Favori sistemi — `toggleFavorite` Server Action + `FavoriteButton` + ListingCard + ilanlar sayfası
+- [x] Yorum sistemi (admin moderasyonlu) — `CommentForm` + `CommentList` + `/admin/yorumlar`
+- [x] Bildirim merkezi (in-app) — `NotificationDropdown` + `HeaderWrapper` server split
+- [x] Profil sayfası — favoriler listesi + yorumlar listesi
+- [x] Paylaş butonları — WhatsApp / X / link kopyala + Open Graph + Twitter Card meta
+- [x] Arama alarmları (SearchAlert) + cron job (node-cron) — `instrumentation.ts` + `lib/cron.ts`, her gün 22:00
+- [x] Email bildirimleri (Resend) — `lib/email.ts`, yorum onayı + alarm eşleşmesi
+- [x] Rate limiting — `lib/rate-limit.ts`: login 5/15dk (auth.ts), kayıt 3/10dk (register API)
 
-### Faz 5: Admin Paneli
-- [ ] Dashboard (Recharts grafikler)
-- [ ] İlan yönetimi (filtre, toplu işlem)
-- [ ] Kullanıcı yönetimi (rol, ban)
-- [ ] Yorum moderasyonu
-- [ ] Galeri yönetimi (foto+video upload)
-- [ ] İletişim mesajları görüntüleme
-- [ ] Audit log görüntüleyici
-- [ ] 2FA kurulum akışı
-- [ ] Site ayarları (iletişim, sosyal)
+### Faz 4 ✅ TAMAMLANDI + Bug Fix Turu ✅
+
+Post-Faz-4 düzeltmeleri (12 madde):
+- [x] Yorumlar anında yayınlanıyor (`approved: true` default) — admin sadece silebilir
+- [x] Ana sayfa `[locale]/(public)/page.tsx`'e taşındı → Header/Footer çalışıyor
+- [x] Ana sayfa: öne çıkan ilanlar DB'den çekiliyor + arama butonu navigate ediyor
+- [x] Header: çıkış butonu (desktop + mobile) eklendi
+- [x] 404 sayfası (`[locale]/not-found.tsx`) tasarım diliyle oluşturuldu
+- [x] Mobile `/ilanlar`: tek sticky toolbar (FilterMobileTrigger + SortSelect + ViewToggle)
+- [x] Admin panel mobil: `AdminShell` (client, hamburger toggle) + overlay sidebar
+- [x] `DialogContent` accessibility: `<Dialog.Title className="sr-only">` eklendi
+- [x] Admin form `<select>` seçenekleri görünür (`bg-navy-800 [&>option]:bg-navy-800`)
+- [x] Galeri: tam ekran lightbox (Escape/klavye/thumbnail strip)
+- [x] İlan detay harita: Leaflet gerçek harita, placeholder kaldırıldı
+- [x] Arama Alarmı: `/ilanlar` sayfasında aktif filtrelerle `SearchAlertInline`
+
+### Faz 5: Admin Paneli ✅ TAMAMLANDI
+- [x] Dashboard (Recharts grafikler) — 6 istatistik kartı + AreaChart + PieChart + BarChart
+- [x] İlan yönetimi gelişmiş — metin/status/kategori filtresi + featured toggle + toplu işlem (aktif/arşiv/sil)
+- [x] Kullanıcı yönetimi — rol değişimi (USER→AGENT→ADMIN) + ban/unban, audit log
+- [x] Yorum moderasyonu gelişmiş — görünür/gizle toggle + filtre sekmeler (Tümü/Yayında/Gizli)
+- [x] Galeri yönetimi — GalleryItem CRUD, foto+video upload, sıralama (yukarı/aşağı)
+- [x] İletişim mesajları — okundu işaretleme, filtreleme (okunmamış/okunmuş), silme
+- [x] Audit log görüntüleyici — action/entity filtreli tablo, 50/sayfa sayfalama
+- [x] Site ayarları — SiteSettings form (iletişim, sosyal linkler JSON, hakkımızda)
+- [x] 2FA kurulum akışı — TOTP (otpauth) QR setup + login sonrası doğrulama (signed cookie)
 
 ### Faz 6: Sayfalar + Cila + Deployment
 - [ ] Hakkımızda sayfası
@@ -532,13 +550,17 @@ sudo certbot --nginx -d guleryuzgayrimenkul.com -d www.guleryuzgayrimenkul.com
 
 ## 10. Sonraki Adım
 
-**Faz 4'e geçildi (2026-05-20).** Faz 3 tüm maddeleriyle tamamlandı.
+**Faz 5 Admin Paneli tamamlandı (2026-05-20). Faz 5 güvenlik sağlamlaştırması (2026-05-21).** Faz 6 sırada.
 
-Faz 4 başlangıç sırası (öncelik sırasıyla):
-1. Favori sistemi — `POST /api/favorites` + `FavoriteButton` client component + kalp ikonu ilan kartlarında
-2. Yorum sistemi — `Comment` modeli zaten şemada var; admin moderasyonu gerekiyor
-3. Paylaş butonları — WhatsApp/Instagram/X linkleri + Open Graph meta tag'leri
-4. Bildirim merkezi — in-app notification dropdown + email (Faz 4 sonuna)
+Faz 6 öncelik sırası:
+1. **Hakkımızda sayfası** — SiteSettings'ten `aboutTr` içeriği + ofis/ekip görselleri
+2. **İletişim sayfası** — form (`ContactMessage` oluşturma) + `/api/contact` route + Leaflet harita + iletişim bilgileri
+3. **Galeri/Anılar sayfası** — lightbox (fotoğraf) + video player, GalleryItem listesi
+4. **SEO** — `sitemap.xml`, `robots.txt`, Schema.org RealEstateListing JSON-LD
+5. **OpenGraph + Twitter Cards** — tüm sayfalarda doğru OG tag (ilan detay zaten var)
+6. **KVKK + Gizlilik** — aydınlatma metni + cookie consent banner
+7. **Performance** — Lighthouse 90+, resimlerde `priority` + `loading="lazy"` audit
+8. **VPS Deployment** — Nginx + PM2 + Certbot, `ecosystem.config.js` yazılacak
 
 ---
 
@@ -719,6 +741,147 @@ Faz 1'de planlananın dışına çıkan veya dikkat gerektiren teknik kararlar:
 - Harita görünümünde sayfalama anlamsız: koordinatı olan tüm aktif ilanlar çekiliyor (max 200), `take` parametresi harita için yüksek tutuldu.
 - Decimal → number dönüşümü harita veri hazırlamada kritik (RSC serializasyonu + `"use cache"` uyumu).
 
+### Faz 4: Header Server/Client Split
+
+- `header.tsx` artık `"use client"` + `user`, `notifications`, `unreadCount` prop'ları alıyor.
+- `header-wrapper.tsx` Server Component — `auth()` + `db.notification.findMany()` burada çalışıyor, sonuçları Header'a prop olarak geçiriyor.
+- `(public)/layout.tsx` artık `<Header />` yerine `<HeaderWrapper />` render ediyor.
+- Sebep: Client Component içinde `auth()` çağrılamaz; server/client boundary net ayrım gerekiyor.
+
+### Faz 4: Favori Sistemi
+
+- `toggleFavorite(listingId)` Server Action: `Favorite.@@unique([userId, listingId])` ile `findUnique` + `delete`/`create` pattern.
+- `FavoriteButton`: `useTransition` + optimistic state — sunucu yanıtını beklemeden UI anında güncellenir.
+- Giriş yapılmamış kullanıcı favorilemeye çalışırsa `/giris`'e yönlendirme (catch bloğunda).
+- `ilanlar/page.tsx`: tek sorguda tüm kullanıcı favorileri çekilip `Set<string>` yapılıyor, her karta `isFavorited` prop'u geçiliyor.
+
+### Faz 4: Yorum Sistemi
+
+- `createComment` Server Action: `approved: true` ile kaydedilir (anında yayın). Başta `false` planlanmıştı; butik ofis modeli için onay adımı kaldırıldı.
+- `deleteComment` sadece ADMIN/SUPER_ADMIN rolüne açık; `approveComment` bırakıldı (DB'de eski `false` kayıtlar varsa hâlâ işe yarar).
+- `/admin/yorumlar` — tüm yorumlar tek listede, sadece sil aksiyonu.
+- CommentList `where: { approved: true }` ile filtreliyor (default `true` olduğundan tüm yeni yorumlar görünür).
+
+### Faz 4: Open Graph + Paylaş
+
+- `generateMetadata` export — ilan detay sayfasında OG ve Twitter Card tag'leri üretiyor.
+- `NEXT_PUBLIC_BASE_URL` env var ile canonical URL; fallback `https://guleryuzgayrimenkul.com`.
+- ShareButtons: `wa.me/?text=` + `x.com/intent/tweet` + `navigator.clipboard.writeText` (copy link).
+- Instagram paylaşımı link-based desteklenmiyor (mobil uygulama gerektirir), bu nedenle atlandı.
+
+### Faz 4: Rate Limiting — In-Memory
+
+- `src/lib/rate-limit.ts`: process-level `Map` tabanlı rate limiter.
+- Login: 5 deneme / 15 dk per email (`auth.ts` authorize callback).
+- Kayıt: 3 deneme / 10 dk per IP (`/api/auth/register` POST).
+- VPS'te PM2 `instances: 1` kullanılacağından in-memory yeterli. Multi-instance gerekirse Redis'e migrate edilebilir.
+- Otomatik temizleme: `setInterval` her 5 dk'da 30 dk süresi dolmuş kayıtları siliyor.
+
+### Faz 4: Email — Resend + Graceful No-op
+
+- `resend@6.12.3` paketi; `RESEND_API_KEY` boşsa `resend = null` → tüm fonksiyonlar sessizce return eder (dev'de hata yok).
+- `RESEND_FROM_EMAIL` env var; fallback `noreply@guleryuzgayrimenkul.com`.
+- Şablonlar `src/lib/email.ts`'te inline HTML (navy/gold tema):
+  - `sendCommentApprovedEmail` — yorum onayı bildirimi (şu an kullanılmıyor, `approved: true` default olduğundan)
+  - `sendSearchAlertEmail` — alarm eşleşmesi ile {N} ilan listesi
+- Üretimde `RESEND_API_KEY` `.env`'e eklenecek.
+
+### Faz 4: SearchAlert + Cron Job
+
+- `node-cron@4.2.1` + Next.js `instrumentation.ts` (server startup hook).
+- `instrumentation.ts` → `register()`: `NEXT_RUNTIME === "nodejs"` koşuluyla çalışır, Edge'de değil.
+- Her gün **22:00 Europe/Istanbul** timezone'unda `checkSearchAlerts()` tetiklenir.
+- `lib/cron.ts` mantığı: her aktif SearchAlert için frekansa göre tarih aralığı (daily: -1gün, weekly: -7gün) → Prisma sorgu → eşleşme varsa in-app `Notification` + `sendSearchAlertEmail`.
+- **NOT:** "instant" frequency şu an günlük cron'a düşüyor. Gerçek anlık tetikleme için `createListing` Server Action'a `checkSearchAlerts(listingId)` hook eklenebilir (Faz 5 opsiyonu).
+
+### Faz 4: Admin Panel Mobil — AdminShell Pattern
+
+- `AdminLayout` (Server Component) → `AdminShell` (Client Component) aracılığı.
+- Neden ayrı component: sidebar toggle state client-side, layout server-side; ikisi karıştırılamaz.
+- `AdminShell`: mobile topbar (hamburger) + `fixed` overlay + `translate-x` slide-in sidebar; `lg:` breakpoint'te klasik `flex` düzeni.
+- `AdminSidebar.onNavigate` prop: nav linkine tıklayınca mobil sidebar kapanır.
+
+### Faz 4: Navigasyon Butonu — Harita Popup
+
+- Her Leaflet popup'ına ve ilan detay konum başlığına Google Maps "Yol Tarifi Al" linki eklendi.
+- URL: `https://www.google.com/maps/dir/?api=1&destination={lat},{lng}` — mobilde Maps uygulamasını açar.
+- Popup'ta iki buton yan yana: "İlanı Gör" (gold filled) + "Yol Tarifi" (gold outlined).
+- İlan detayında konum başlığının sağında küçük pill buton.
+
+### Faz 5: 2FA — Cookie-Based Enforcement (Auth.js Bypass)
+
+- Auth.js v5 JWT session'ı orta adımda "upgrade" etmek mümkün değil; ortak kalıp cookie-based 2FA doğrulaması.
+- `guleryuz-2fa-verified` cookie: `{userId}|{exp}|{hmac}` — HMAC-SHA256 ile `AUTH_SECRET` imzalı.
+- `guleryuz-2fa-setup` cookie: setup sırasında geçici secret saklanır (10 dk TTL), `{userId}|{secretBase32}|{hmac}`.
+- Admin layout: `headers()` ile `x-pathname` okunur → eğer `/2fa-dogrula` rotasındaysak redirect yapılmaz (sonsuz döngü önlemi).
+- `src/proxy.ts` middleware: `intlMiddleware(req)` sonraki yanıta `x-pathname` header ekler.
+- TOTP: `otpauth` kütüphanesi, SHA1, 6 hane, 30s dönem. `window: 1` ile ±1 periyot toleransı.
+- QR kod: `qrcode` ile SVG data URL, navy/gold renk — setup page'de `<Image>` ile gösterilir.
+- Sadece ADMIN/SUPER_ADMIN rolü için zorunlu; AGENT etkilenmiyor.
+- 2FA etkinken logout (veya 8 saat TTL dolması) → tekrar doğrulama gerekir.
+
+### Faz 5: form `action` + Server Action Dönüş Tipi
+
+- `form action` prop tipi `(formData: FormData) => void | Promise<void>` — `ActionResult` döndüren Server Action doğrudan geçilemiyor.
+- **DOĞRU ÇÖZÜM:** `deleteGalleryItem`, `moveGalleryItem`, `markMessageRead`, `deleteMessage` action'larının dönüş tipi `Promise<void>` olarak değiştirildi.
+- `.bind()` pattern geçerliliğini koruyor: `action={deleteGalleryItem.bind(null, item.id)}` — server action referansı serileştirilebilir.
+- `async () => { await serverAction(...) }` wrapper KULLANMA — bunlar Server Action değil, anonim fonksiyondur.
+
+### Faz 5: Dashboard — Parallel Query Mimarisi
+
+- `Promise.all([...11 sorgu...])` ile tek round-trip.
+- Cache yok (real-time dashboard uygun, auth-bağlı veri).
+- `buildDailyData()`: son 7 gün `Date` array'den istemci tarafında aggregation — DB'de GROUP BY yerine JS'de sayma (küçük dataset için yeterli).
+- Recharts: `DashboardCharts` Client Component. `AreaChart` (7 günlük aktivite) + `PieChart` (kategori dağılımı) + `BarChart` (durum dağılımı). Renk paleti: `COLORS = ["#D4A744", "#60A5FA", "#4ADE80", "#C084FC"]`.
+
+### Faz 5: 2FA — Zorunlu Enforcement (Güncellenmiş)
+
+- 2FA kurulmamış ADMIN/SUPER_ADMIN → `/admin/2fa-kurulum` yönlendirmesi (artık zorunlu).
+- 2FA kurulmuş ama cookie doğrulanmamış → `/admin/2fa-dogrula` yönlendirmesi.
+- Bypass listesi: `isOnVerifyPage || isOnSetupPage` — sonsuz döngü önlemi.
+- AGENT rolü 2FA sayfalarına erişirse → `/admin`'e yönlendirilir.
+- Kütüphane: `otpauth` (TOTP, SHA1, 6 hane, 30s) + `qrcode` (SVG data URL).
+- Backup kod yok — sadece TOTP uygulaması (Authenticator) ile giriş.
+
+### Faz 5: Audit Log Mimarisi
+
+- `lib/audit.ts` — tek `auditLog()` yardımcı fonksiyonu. `try/catch` ile hataları yutarak ana akışı kesmez.
+- Sadece Server Action'lardan çağrılır (sayfa component'lerinden değil).
+- IP: `x-forwarded-for` header (Nginx proxy arkasında doğru IP için).
+- **Loglanmayan aksiyonlar artık yok** — tüm admin CRUD işlemleri loglanıyor:
+  - `listing.*`: create, update, delete, status_change, toggle_featured, bulk_{action}
+  - `user.*`: role_change, ban, unban
+  - `comment.*`: hide, approve, delete
+  - `gallery.*`: create, delete
+  - `settings.update`, `2fa.enabled`, `2fa.disabled`
+
+### Faz 5: RBAC Implementasyonu — 3 Katman
+
+- **Katman 1 — Layout:** `admin/layout.tsx` AGENT/ADMIN/SA kontrolü + 2FA zorunluluğu.
+- **Katman 2 — Sayfa:** Hassas sayfalar (kullanicilar, yorumlar, galeri, iletisim, audit-log, ayarlar, 2fa-kurulum) kendi `auth()` + ADMIN/SA kontrolüyle korunuyor.
+- **Katman 3 — Server Action:** Her action kendi `getAdminUser()` / `getAuthorizedUser()` çağrısıyla bağımsız korunuyor.
+- Middleware'de RBAC yok — next-intl middleware locale routing yapıyor, auth guard layout'ta.
+
+### Faz 5: Session Callback DB Kontrolü (Ban Anında Etkili)
+
+- `auth.ts` `session` callback artık `async` — her `auth()` çağrısında DB'den `banned` + `role` yeniden okunuyor.
+- Banlı kullanıcı: `{ expires: session.expires }` döndürülüyor (user yok) → tüm `session?.user` kontrolleri null yakalar.
+- Yan fayda: Rol değişimleri de anında etkili (JWT yenilemesi beklemiyor).
+- Tradeoff: Her `auth()` çağrısında 1 ekstra DB sorgusu. Küçük site için kabul edilebilir.
+
+### Faz 5: Upload API Rate Limiting
+
+- `/api/upload` POST handler'a rate limit eklendi: 30 yükleme/saat per user ID.
+- `checkRateLimit(`upload:${session.user.id}`, 30, 3600000)` — `rate-limit.ts`'teki in-memory limiter kullanılıyor.
+- 429 döndürüldüğünde hata mesajı: "Çok fazla yükleme isteği. Lütfen bir saat bekleyin."
+
+### Faz 5: Admin İlan Listesi Sayfalama
+
+- `admin/ilanlar/page.tsx`'e `PAGE_SIZE = 50` + `skip` + `take` eklendi.
+- Toplam kayıt: `Promise.all([findMany, count])` ile paralel sorgu.
+- URL parametresi: `?sayfa=N` — filtreler korunarak sayfalama çalışıyor.
+- `buildUrl(page)` helper: mevcut filtreleri URL'ye dahil ediyor.
+
 ---
 
 ## 12. Bilinen Sorunlar / TODO
@@ -731,23 +894,27 @@ Sonraki fazlara bırakılan, şu an eksik olan maddeler:
 - [x] **`public/uploads/` klasörü** — Oluşturuldu.
 - [x] **Route grupları** — `[locale]/(public)/` ve `[locale]/(auth)/` kuruldu.
 
-### Önemli (Faz 4+)
+### Önemli (Faz 5+)
 - [ ] **Logo placeholder** — Header ve Footer'da metin tabanlı logo var. `/public/brand/logo.svg` eklenmeli.
 - [ ] **Hero arka plan fotoğrafı** — CSS gradient geçici; gerçek property fotoğrafı eklenecek.
-- [ ] **`src/lib/rate-limit.ts` yok** — Login rate limiting (5/15 dk) Faz 4'te eklenmeli.
-- [ ] **`src/lib/audit.ts` yok** — Admin eylem audit log helper Faz 5'te eklenmeli.
-- [x] **`src/lib/validations/listing.ts`** — Tamamlandı.
-- [x] **Upload UI ilan formunda** — `image-uploader.tsx` + `saveListingImages` action + `listing-form.tsx` entegrasyonu tamamlandı.
-- [x] **Çoklu görsel carousel** — `listing-gallery.tsx` ile tamamlandı (thumbnail strip + prev/next + klavye desteği).
+- [x] **`src/lib/rate-limit.ts`** — Login 5/15dk + kayıt 3/10dk + upload 30/saat. Tamamlandı.
+- [x] **`src/lib/audit.ts`** — Tüm admin CRUD aksiyonları loglanıyor (listing, user, comment, gallery, settings, 2FA).
 - [ ] **Auth `signIn` sayfası locale hardcoded** — `auth.ts`'te `pages.signIn: "/tr/giris"`. İngilizce locale için Faz 6'da düzeltilecek.
-- [x] **Mobil filtre paneli** — `filter-sheet.tsx`'te `@radix-ui/react-dialog` bottom sheet tamamlandı.
+- [x] **Galeri lightbox** — `listing-gallery.tsx`'te tam ekran modal, Escape/klavye/thumbnail strip. Tamamlandı.
+- [x] **Admin panel mobil** — `AdminShell` + hamburger overlay sidebar. Tamamlandı.
+- [x] **404 sayfası** — `app/not-found.tsx` (root) + `[locale]/not-found.tsx` navy/gold tasarımıyla.
+- [x] **2FA zorunlu** — Kurulmamış admin → 2fa-kurulum sayfasına yönlendiriliyor.
+- [x] **Ban anında etkili** — `session` callback DB'den banned+role yeniden okuyor.
+- [x] **Admin ilan listesi sayfalama** — 50/sayfa, `?sayfa=N` parametresi.
+- [x] **Upload rate limiting** — 30 yükleme/saat per kullanıcı.
 
-### Sonraya Bırakılanlar (Faz 5–6)
+### Sonraya Bırakılanlar (Faz 6)
 - [ ] **`ecosystem.config.js` yok** — PM2 config Faz 6 deployment'ta yazılacak.
 - [ ] **`README.md` yok** — Kurulum talimatları yazılmamış.
 - [ ] **Google OAuth test edilmedi** — `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` boş.
-- [ ] **Auth.js v5 DB Session entegrasyonu** — Şu an JWT. Gerekirse `@auth/prisma-adapter` Prisma 7 uyumu araştırılacak.
 - [ ] **Sosyal medya ikonları** — Footer'daki geçici ikonlar gerçek SVG/iconify ile değiştirilecek.
+- [ ] **`/api/contact` route yok** — İletişim formu için Faz 6'da yazılacak.
+- [ ] **`/hakkimizda`, `/galeri`, `/iletisim` sayfaları yok** — Header navigasyonundan 404 veriyor.
 - [x] **CLAUDE.md Bölüm 3** — `@node-rs/argon2` olarak güncellendi.
 
 ---

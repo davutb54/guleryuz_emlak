@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import { MapPin, BedDouble, Bath, Maximize2 } from "lucide-react";
 import Image from "next/image";
+import FavoriteButton from "./favorite-button";
 
 interface ListingCardProps {
   listing: {
@@ -18,6 +19,7 @@ interface ListingCardProps {
     featured: boolean;
     images: { url: string; isPrimary: boolean; alt?: string | null }[];
   };
+  isFavorited?: boolean;
 }
 
 const TYPE_LABELS: Record<string, string> = { SALE: "Satılık", RENT: "Kiralık" };
@@ -36,7 +38,7 @@ function formatPrice(price: { toNumber(): number }, currency: string) {
   }).format(price.toNumber());
 }
 
-export default function ListingCard({ listing }: ListingCardProps) {
+export default function ListingCard({ listing, isFavorited = false }: ListingCardProps) {
   const primaryImage =
     listing.images.find((i) => i.isPrimary) ?? listing.images[0];
 
@@ -68,16 +70,21 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </p>
         </div>
 
-        {/* Öne çıkan badge */}
-        {listing.featured && (
-          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-gold-500 text-navy-900 text-[11px] font-bold uppercase tracking-wider">
-            Öne Çıkan
+        {/* Sol üst: Tür + Öne Çıkan */}
+        <div className="absolute top-3 left-3 flex gap-2">
+          <div className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-navy-900/70 backdrop-blur-sm text-cream-100">
+            {TYPE_LABELS[listing.type] ?? listing.type}
           </div>
-        )}
+          {listing.featured && (
+            <div className="px-2.5 py-1 rounded-full bg-gold-500 text-navy-900 text-[11px] font-bold uppercase tracking-wider">
+              Öne Çıkan
+            </div>
+          )}
+        </div>
 
-        {/* Tür badge */}
-        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-navy-900/70 backdrop-blur-sm text-cream-100">
-          {TYPE_LABELS[listing.type] ?? listing.type}
+        {/* Sağ üst: Favori */}
+        <div className="absolute top-3 right-3">
+          <FavoriteButton listingId={listing.id} initialFavorited={isFavorited} />
         </div>
       </div>
 

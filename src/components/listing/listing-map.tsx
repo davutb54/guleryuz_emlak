@@ -35,11 +35,22 @@ function formatPrice(price: number, currency: string): string {
   }).format(price);
 }
 
-export default function ListingMap({ listings }: { listings: MapListing[] }) {
+export default function ListingMap({
+  listings,
+  center,
+  zoom,
+}: {
+  listings: MapListing[];
+  center?: [number, number];
+  zoom?: number;
+}) {
   const withCoords = listings.filter(
     (l): l is MapListing & { latitude: number; longitude: number } =>
       l.latitude != null && l.longitude != null
   );
+
+  const mapCenter = center ?? ESKISEHIR_CENTER;
+  const mapZoom = zoom ?? 12;
 
   return (
     <>
@@ -90,8 +101,8 @@ export default function ListingMap({ listings }: { listings: MapListing[] }) {
       `}</style>
 
       <MapContainer
-        center={ESKISEHIR_CENTER}
-        zoom={12}
+        center={mapCenter}
+        zoom={mapZoom}
         style={{ width: "100%", height: "100%" }}
         zoomControl
       >
@@ -134,12 +145,30 @@ export default function ListingMap({ listings }: { listings: MapListing[] }) {
                   <p style={{ fontSize: 16, fontWeight: 700, color: "#E5C77A", margin: "0 0 10px" }}>
                     {formatPrice(listing.price, listing.currency)}
                   </p>
-                  <a
-                    href={`/tr/ilan/${listing.slug}`}
-                    style={{ display: "block", textAlign: "center", padding: "6px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#0A1F3A", background: "#D4A744", textDecoration: "none" }}
-                  >
-                    İlanı Gör →
-                  </a>
+                  {/* Aksiyon butonları */}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <a
+                      href={`/tr/ilan/${listing.slug}`}
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#0A1F3A", background: "#D4A744", textDecoration: "none" }}
+                    >
+                      İlanı Gör
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </a>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${listing.latitude},${listing.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Google Maps'te yol tarifi al"
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#D4A744", background: "transparent", border: "1.5px solid rgba(212,167,68,0.45)", textDecoration: "none" }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                      </svg>
+                      Yol Tarifi
+                    </a>
+                  </div>
                 </div>
               </div>
             </Popup>

@@ -74,8 +74,6 @@ function calcScore(
 export async function getSimilarListings(
   params: SimilarListingParams
 ): Promise<SimilarListingResult[]> {
-  "use cache";
-
   const minPrice = params.price * 0.7;
   const maxPrice = params.price * 1.3;
 

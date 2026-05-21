@@ -97,7 +97,7 @@ function FormField({
 }
 
 const selectClass =
-  "w-full h-[52px] bg-white/[0.03] border border-[rgba(216,220,228,0.12)] text-cream-100 rounded-xl px-4 text-sm focus:outline-none focus:border-gold-500 focus:shadow-[0_0_0_3px_rgba(212,167,68,0.15)] transition-all";
+  "w-full h-[52px] bg-navy-800 border border-[rgba(216,220,228,0.12)] text-cream-100 rounded-xl px-4 text-sm focus:outline-none focus:border-gold-500 focus:shadow-[0_0_0_3px_rgba(212,167,68,0.15)] transition-all [&>option]:bg-navy-800 [&>option]:text-cream-100";
 
 const textareaClass =
   "w-full bg-white/[0.03] border border-[rgba(216,220,228,0.12)] text-cream-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold-500 focus:shadow-[0_0_0_3px_rgba(212,167,68,0.15)] transition-all placeholder:text-silver-500 resize-none";

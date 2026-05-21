@@ -6,6 +6,14 @@ import type { MapListing } from "./listing-map";
 // ssr: false yalnızca Client Component içinde kullanılabilir
 const ListingMap = dynamic(() => import("./listing-map"), { ssr: false });
 
-export default function ListingMapClient({ listings }: { listings: MapListing[] }) {
-  return <ListingMap listings={listings} />;
+export default function ListingMapClient({
+  listings,
+  center,
+  zoom,
+}: {
+  listings: MapListing[];
+  center?: [number, number];
+  zoom?: number;
+}) {
+  return <ListingMap listings={listings} center={center} zoom={zoom} />;
 }

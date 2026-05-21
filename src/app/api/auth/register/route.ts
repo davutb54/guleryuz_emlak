@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { checkRegisterRateLimit } from "@/lib/rate-limit";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Ad en az 2 karakter olmalı"),
@@ -11,6 +12,15 @@ const registerSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+    const rl = checkRegisterRateLimit(ip);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Çok fazla deneme. Lütfen bekleyin." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {

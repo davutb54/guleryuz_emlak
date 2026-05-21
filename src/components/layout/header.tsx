@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Menu, X } from "lucide-react";
+import { Menu, X, UserCircle2, LogOut } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { signOut } from "next-auth/react";
+import NotificationDropdown from "./notification-dropdown";
 
 const NAV_LINKS = [
   { href: "/ilanlar" as const, key: "listings" },
@@ -12,6 +14,21 @@ const NAV_LINKS = [
   { href: "/galeri" as const, key: "gallery" },
   { href: "/iletisim" as const, key: "contact" },
 ];
+
+interface Notification {
+  id: string;
+  titleTr: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: Date;
+}
+
+interface HeaderProps {
+  user: { id: string; name?: string | null; email?: string | null } | null;
+  notifications: Notification[];
+  unreadCount: number;
+}
 
 function Logo() {
   return (
@@ -31,7 +48,7 @@ function Logo() {
   );
 }
 
-export default function Header() {
+export default function Header({ user, notifications, unreadCount }: HeaderProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -64,20 +81,45 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Desktop CTAs */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/giris"
-            className="rounded-full border border-gold-500 px-5 py-2 text-sm font-medium text-gold-500 transition-all duration-200 hover:bg-gold-500/10"
-          >
-            {t("login")}
-          </Link>
-          <Link
-            href="/iletisim"
-            className="rounded-full bg-gold-500 px-5 py-2 text-sm font-semibold text-navy-900 transition-all duration-200 hover:bg-gold-400 hover:-translate-y-px shadow-glow-sm"
-          >
-            {t("contact")}
-          </Link>
+        {/* Desktop sağ aksiyonlar */}
+        <div className="hidden md:flex items-center gap-2">
+          {user ? (
+            <>
+              <NotificationDropdown
+                notifications={notifications}
+                unreadCount={unreadCount}
+              />
+              <Link
+                href="/profil"
+                aria-label="Profilim"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-cream-200 hover:text-gold-400 hover:bg-navy-800/60 transition-all"
+              >
+                <UserCircle2 size={20} strokeWidth={1.5} />
+              </Link>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                aria-label="Çıkış Yap"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-silver-400 hover:text-red-400 hover:bg-navy-800/60 transition-all"
+              >
+                <LogOut size={18} strokeWidth={1.5} />
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/giris"
+                className="rounded-full border border-gold-500 px-5 py-2 text-sm font-medium text-gold-500 transition-all duration-200 hover:bg-gold-500/10"
+              >
+                {t("login")}
+              </Link>
+              <Link
+                href="/iletisim"
+                className="rounded-full bg-gold-500 px-5 py-2 text-sm font-semibold text-navy-900 transition-all duration-200 hover:bg-gold-400 hover:-translate-y-px shadow-glow-sm"
+              >
+                {t("contact")}
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -106,20 +148,41 @@ export default function Header() {
             ))}
           </nav>
           <div className="mt-4 flex flex-col gap-2 border-t border-[--border-divider] pt-4">
-            <Link
-              href="/giris"
-              onClick={() => setOpen(false)}
-              className="rounded-full border border-gold-500 py-2.5 text-center text-sm font-medium text-gold-500"
-            >
-              {t("login")}
-            </Link>
-            <Link
-              href="/iletisim"
-              onClick={() => setOpen(false)}
-              className="rounded-full bg-gold-500 py-2.5 text-center text-sm font-semibold text-navy-900"
-            >
-              {t("contact")}
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href="/profil"
+                  onClick={() => setOpen(false)}
+                  className="rounded-full border border-gold-500/40 py-2.5 text-center text-sm font-medium text-gold-500"
+                >
+                  Profilim
+                </Link>
+                <button
+                  onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+                  className="rounded-full border border-red-500/30 py-2.5 text-center text-sm font-medium text-red-400 flex items-center justify-center gap-2"
+                >
+                  <LogOut size={15} strokeWidth={1.5} />
+                  Çıkış Yap
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/giris"
+                  onClick={() => setOpen(false)}
+                  className="rounded-full border border-gold-500 py-2.5 text-center text-sm font-medium text-gold-500"
+                >
+                  {t("login")}
+                </Link>
+                <Link
+                  href="/iletisim"
+                  onClick={() => setOpen(false)}
+                  className="rounded-full bg-gold-500 py-2.5 text-center text-sm font-semibold text-navy-900"
+                >
+                  {t("contact")}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

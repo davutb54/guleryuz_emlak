@@ -1,12 +1,14 @@
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import ListingCard from "@/components/listing/listing-card";
 import SortSelect from "@/components/listing/sort-select";
-import FilterSheet from "@/components/listing/filter-sheet";
+import { FilterSidebar, FilterMobileTrigger } from "@/components/listing/filter-sheet";
 import ViewToggle from "@/components/listing/view-toggle";
 import ListingMapClient from "@/components/listing/listing-map-client";
+import SearchAlertInline from "@/components/listing/search-alert-inline";
 import { Link } from "@/i18n/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { parseFiltersFromUrl, buildFilterUrl } from "@/lib/filter-utils";
+import { parseFiltersFromUrl, buildFilterUrl, countActiveFilters } from "@/lib/filter-utils";
 import type { MapListing } from "@/components/listing/listing-map";
 
 const ITEMS_PER_PAGE = 12;
@@ -40,6 +42,7 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
   const rawParams = await searchParams;
   const filters = parseFiltersFromUrl(toURLSearchParams(rawParams));
   const isMapView = getParam(rawParams, "gorunum") === "harita";
+  const activeFilterCount = countActiveFilters(filters);
 
   // ─── Prisma where koşulu ─────────────────────────────────────────────────
   const where: Record<string, unknown> = { status: "ACTIVE" };
@@ -91,7 +94,7 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
     area_desc: { area: "desc" as const },
   }[filters.sort] ?? { createdAt: "desc" as const };
 
-  // ─── View-toggle URL'leri (gorunum + sayfa olmadan) ──────────────────────
+  // ─── View-toggle URL'leri ─────────────────────────────────────────────────
   const filterOnlyUrl = buildFilterUrl({ ...filters, page: 1 });
   const listUrl = filterOnlyUrl;
   const mapUrl =
@@ -110,7 +113,7 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
         : []
     );
 
-  // ─── Harita görünümü: koordinatlı tüm ilanlar (max 200) ─────────────────
+  // ─── Harita görünümü ──────────────────────────────────────────────────────
   if (isMapView) {
     const mapListingsRaw = await db.listing.findMany({
       where: { ...where, latitude: { not: null }, longitude: { not: null } },
@@ -134,7 +137,6 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
       },
     });
 
-    // Decimal → number (Client Component sınırı için)
     const mapListings: MapListing[] = mapListingsRaw.map((l) => ({
       ...l,
       price: l.price.toNumber(),
@@ -146,29 +148,31 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
       <div className="min-h-screen bg-navy-900 pt-8 pb-16">
         <div className="max-w-[1440px] mx-auto px-5 lg:px-16">
           {/* Başlık */}
-          <div className="mb-6 flex items-end justify-between gap-4">
+          <div className="mb-4 flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-600 mb-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-600 mb-1">
                 Güleryüz Gayrimenkul
               </p>
               <h1 className="font-display text-display-lg text-cream-50">İlanlar</h1>
-              <p className="text-silver-500 mt-2 text-sm">
+              <p className="text-silver-500 mt-1 text-sm">
                 {total} ilan — {mapListings.length} konumlu
               </p>
             </div>
-            <ViewToggle listUrl={listUrl} mapUrl={mapUrl} currentView="harita" />
+            <div className="hidden lg:block">
+              <ViewToggle listUrl={listUrl} mapUrl={mapUrl} currentView="harita" />
+            </div>
           </div>
 
-          {/* Mobile: filtre trigger */}
-          <div className="flex items-center gap-3 mb-5 lg:hidden">
-            <FilterSheet initialFilters={filters} />
+          {/* Mobile toolbar — sticky */}
+          <div className="sticky top-20 z-10 bg-navy-900/95 backdrop-blur-sm -mx-5 px-5 py-2.5 mb-4 border-b border-[rgba(212,167,68,0.08)] lg:hidden flex items-center gap-3">
+            <FilterMobileTrigger initialFilters={filters} />
+            <div className="ml-auto">
+              <ViewToggle listUrl={listUrl} mapUrl={mapUrl} currentView="harita" />
+            </div>
           </div>
 
           <div className="flex gap-8">
-            {/* Sol: Filtre Sidebar */}
-            <FilterSheet initialFilters={filters} />
-
-            {/* Sağ: Harita */}
+            <FilterSidebar initialFilters={filters} />
             <div className="flex-1 min-w-0">
               <div className="rounded-xl overflow-hidden border border-[rgba(212,167,68,0.12)]" style={{ height: "calc(100vh - 14rem)" }}>
                 <ListingMapClient listings={mapListings} />
@@ -187,6 +191,16 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
 
   // ─── Liste görünümü ───────────────────────────────────────────────────────
   const skip = (filters.page - 1) * ITEMS_PER_PAGE;
+
+  const session = await auth();
+  let favoriteIds = new Set<string>();
+  if (session?.user?.id) {
+    const favs = await db.favorite.findMany({
+      where: { userId: session.user.id },
+      select: { listingId: true },
+    });
+    favoriteIds = new Set(favs.map((f) => f.listingId));
+  }
 
   const [listings, total] = await Promise.all([
     db.listing.findMany({
@@ -227,33 +241,34 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
     <div className="min-h-screen bg-navy-900 pt-8 pb-16">
       <div className="max-w-[1440px] mx-auto px-5 lg:px-16">
         {/* Başlık */}
-        <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-600 mb-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-600 mb-1">
               Güleryüz Gayrimenkul
             </p>
             <h1 className="font-display text-display-lg text-cream-50">İlanlar</h1>
-            <p className="text-silver-500 mt-2 text-sm">{total} ilan bulundu</p>
+            <p className="text-silver-500 mt-1 text-sm">{total} ilan bulundu</p>
           </div>
+          <div className="hidden lg:block">
+            <ViewToggle listUrl={listUrl} mapUrl={mapUrl} currentView="liste" />
+          </div>
+        </div>
+
+        {/* Mobile toolbar — sticky */}
+        <div className="sticky top-20 z-10 bg-navy-900/95 backdrop-blur-sm -mx-5 px-5 py-2.5 mb-5 border-b border-[rgba(212,167,68,0.08)] lg:hidden flex items-center gap-2">
+          <FilterMobileTrigger initialFilters={filters} />
+          <SortSelect
+            defaultValue={getParam(rawParams, "siralama") ?? "newest"}
+            hiddenFields={currentFilterParams}
+          />
           <ViewToggle listUrl={listUrl} mapUrl={mapUrl} currentView="liste" />
         </div>
 
-        {/* Mobile: filtre trigger */}
-        <div className="flex items-center gap-3 mb-5 lg:hidden">
-          <FilterSheet initialFilters={filters} />
-          <div className="ml-auto">
-            <SortSelect
-              defaultValue={getParam(rawParams, "siralama") ?? "newest"}
-              hiddenFields={currentFilterParams}
-            />
-          </div>
-        </div>
-
         <div className="flex gap-8">
-          {/* Sol: Filtre Sidebar */}
-          <FilterSheet initialFilters={filters} />
+          {/* Desktop sidebar */}
+          <FilterSidebar initialFilters={filters} />
 
-          {/* Sağ: Sonuçlar */}
+          {/* Sonuçlar */}
           <div className="flex-1 min-w-0">
             {/* Desktop: sıralama satırı */}
             <div className="hidden lg:flex items-center justify-between mb-5">
@@ -282,11 +297,24 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {listings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {listings.map((listing) => (
+                    <ListingCard
+                      key={listing.id}
+                      listing={listing}
+                      isFavorited={favoriteIds.has(listing.id)}
+                    />
+                  ))}
+                </div>
+
+                {/* Arama alarmı — aktif filtre varsa göster */}
+                {activeFilterCount > 0 && (
+                  <div className="mt-8">
+                    <SearchAlertInline filters={filters} />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Sayfalama */}

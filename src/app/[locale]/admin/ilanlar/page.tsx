@@ -1,65 +1,102 @@
 import { db } from "@/lib/db";
 import { Link } from "@/i18n/navigation";
-import { Plus, Pencil, Eye } from "lucide-react";
-import DeleteListingButton from "@/components/admin/delete-listing-button";
-import ListingStatusSelect from "@/components/admin/listing-status-select";
+import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import ListingTable from "@/components/admin/listing-bulk-actions";
 
-const STATUS_LABELS: Record<string, { label: string; class: string }> = {
-  DRAFT: { label: "Taslak", class: "bg-silver-500/15 text-silver-400" },
-  PENDING: { label: "Beklemede", class: "bg-amber-400/15 text-amber-400" },
-  ACTIVE: { label: "Aktif", class: "bg-green-400/15 text-green-400" },
-  SOLD: { label: "Satıldı", class: "bg-blue-400/15 text-blue-400" },
-  RENTED: { label: "Kiralandı", class: "bg-purple-400/15 text-purple-400" },
-  ARCHIVED: { label: "Arşivlendi", class: "bg-navy-600/60 text-silver-500" },
-};
+const PAGE_SIZE = 50;
 
-const CATEGORY_LABELS: Record<string, string> = {
-  HOUSE: "Ev/Daire",
-  LAND: "Arsa",
-  FIELD: "Tarla",
-  SHOP: "Dükkan",
-};
+const STATUS_OPTIONS = [
+  { value: "", label: "Tüm Durumlar" },
+  { value: "ACTIVE",   label: "Aktif" },
+  { value: "DRAFT",    label: "Taslak" },
+  { value: "PENDING",  label: "Beklemede" },
+  { value: "SOLD",     label: "Satıldı" },
+  { value: "RENTED",   label: "Kiralandı" },
+  { value: "ARCHIVED", label: "Arşivlendi" },
+];
 
-const TYPE_LABELS: Record<string, string> = {
-  SALE: "Satılık",
-  RENT: "Kiralık",
-};
+const CATEGORY_OPTIONS = [
+  { value: "",       label: "Tüm Kategoriler" },
+  { value: "HOUSE",  label: "Ev/Daire" },
+  { value: "LAND",   label: "Arsa" },
+  { value: "FIELD",  label: "Tarla" },
+  { value: "SHOP",   label: "Dükkan" },
+];
 
-function formatPrice(price: { toNumber(): number }, currency: string) {
-  const num = price.toNumber();
-  return new Intl.NumberFormat("tr-TR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(num);
+interface Props {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    kategori?: string;
+    sayfa?: string;
+  }>;
 }
 
-export default async function AdminIlanlarPage() {
-  const listings = await db.listing.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      slug: true,
-      titleTr: true,
-      category: true,
-      type: true,
-      status: true,
-      price: true,
-      currency: true,
-      district: true,
-      featured: true,
-      createdAt: true,
-      agent: { select: { name: true } },
-    },
+export default async function AdminIlanlarPage({ searchParams }: Props) {
+  const { q = "", status = "", kategori = "", sayfa = "1" } = await searchParams;
+  const page = Math.max(1, parseInt(sayfa, 10) || 1);
+  const skip = (page - 1) * PAGE_SIZE;
+
+  const agents = await db.user.findMany({
+    where: { role: { in: ["AGENT", "ADMIN", "SUPER_ADMIN"] } },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
   });
+
+  const where: Record<string, unknown> = {};
+  if (status) where.status = status;
+  if (kategori) where.category = kategori;
+  if (q) {
+    where.OR = [
+      { titleTr: { contains: q } },
+      { district: { contains: q } },
+    ];
+  }
+
+  const [rawListings, total] = await Promise.all([
+    db.listing.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        slug: true,
+        titleTr: true,
+        category: true,
+        type: true,
+        status: true,
+        price: true,
+        currency: true,
+        district: true,
+        featured: true,
+        createdAt: true,
+        agent: { select: { name: true } },
+      },
+    }),
+    db.listing.count({ where }),
+  ]);
+
+  const listings = rawListings.map((l) => ({ ...l, price: Number(l.price) }));
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  function buildUrl(p: number) {
+    const params = new URLSearchParams();
+    if (p > 1) params.set("sayfa", String(p));
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+    if (kategori) params.set("kategori", kategori);
+    const qs = params.toString();
+    return `/admin/ilanlar${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <div>
-      {/* Başlık */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-display-md text-cream-50">İlanlar</h1>
-          <p className="text-silver-500 text-sm mt-1">{listings.length} ilan</p>
+          <p className="text-silver-500 text-sm mt-1">{total} ilan</p>
         </div>
         <Link
           href="/admin/ilanlar/yeni"
@@ -70,117 +107,89 @@ export default async function AdminIlanlarPage() {
         </Link>
       </div>
 
-      {/* Tablo */}
+      {/* Filtre çubuğu */}
+      <form method="GET" className="flex flex-wrap gap-3 mb-5">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={15} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-silver-500 pointer-events-none" />
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Başlık veya ilçe ara..."
+            className="w-full h-10 pl-9 pr-4 bg-navy-800 border border-[var(--border-subtle)] rounded-xl text-sm text-cream-100 placeholder-silver-600 focus:outline-none focus:border-gold-500/60"
+          />
+        </div>
+        <select
+          name="status"
+          defaultValue={status}
+          className="h-10 px-3 bg-navy-800 border border-[var(--border-subtle)] rounded-xl text-sm text-cream-100 focus:outline-none focus:border-gold-500/60 [&>option]:bg-navy-800"
+        >
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <select
+          name="kategori"
+          defaultValue={kategori}
+          className="h-10 px-3 bg-navy-800 border border-[var(--border-subtle)] rounded-xl text-sm text-cream-100 focus:outline-none focus:border-gold-500/60 [&>option]:bg-navy-800"
+        >
+          {CATEGORY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="h-10 px-5 rounded-xl bg-gold-500 text-navy-900 text-sm font-semibold hover:bg-gold-400 transition-colors"
+        >
+          Filtrele
+        </button>
+        {(q || status || kategori) && (
+          <Link
+            href="/admin/ilanlar"
+            className="h-10 px-4 flex items-center rounded-xl border border-[var(--border-subtle)] text-silver-400 text-sm hover:text-cream-100 transition-colors"
+          >
+            Temizle
+          </Link>
+        )}
+      </form>
+
       {listings.length === 0 ? (
         <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-12 text-center">
-          <p className="text-silver-500 mb-4">Henüz ilan yok.</p>
+          <p className="text-silver-500 mb-4">
+            {q || status || kategori ? "Filtreyle eşleşen ilan bulunamadı." : "Henüz ilan yok."}
+          </p>
           <Link
             href="/admin/ilanlar/yeni"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold-500 text-navy-900 text-sm font-semibold"
           >
-            <Plus size={14} />
-            İlk İlanı Ekle
+            <Plus size={14} /> İlk İlanı Ekle
           </Link>
         </div>
       ) : (
-        <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border-divider)]">
-                  {["İlan Başlığı", "Kategori", "Fiyat", "İlçe", "Durum", "Agent", "İşlem"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="px-4 py-3 text-left text-xs font-semibold text-silver-400 uppercase tracking-wider"
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {listings.map((listing, i) => {
-                  const status = STATUS_LABELS[listing.status] ?? STATUS_LABELS.DRAFT;
-                  return (
-                    <tr
-                      key={listing.id}
-                      className={`border-b border-[var(--border-divider)] hover:bg-navy-800/60 transition-colors ${
-                        i === listings.length - 1 ? "border-0" : ""
-                      }`}
-                    >
-                      {/* Başlık */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {listing.featured && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gold-500/15 text-gold-500 font-semibold uppercase">
-                              Öne Çıkan
-                            </span>
-                          )}
-                          <span className="text-cream-100 font-medium line-clamp-1 max-w-[220px]">
-                            {listing.titleTr}
-                          </span>
-                        </div>
-                      </td>
+        <>
+          <ListingTable listings={listings} />
 
-                      {/* Kategori */}
-                      <td className="px-4 py-3 text-silver-400 whitespace-nowrap">
-                        {CATEGORY_LABELS[listing.category]} /{" "}
-                        {TYPE_LABELS[listing.type]}
-                      </td>
-
-                      {/* Fiyat */}
-                      <td className="px-4 py-3 text-cream-100 font-medium tabular-nums whitespace-nowrap">
-                        {formatPrice(listing.price, listing.currency)}
-                      </td>
-
-                      {/* İlçe */}
-                      <td className="px-4 py-3 text-silver-400">
-                        {listing.district}
-                      </td>
-
-                      {/* Durum */}
-                      <td className="px-4 py-3">
-                        <ListingStatusSelect
-                          id={listing.id}
-                          currentStatus={listing.status}
-                        />
-                      </td>
-
-                      {/* Agent */}
-                      <td className="px-4 py-3 text-silver-500 text-xs">
-                        {listing.agent.name}
-                      </td>
-
-                      {/* İşlem */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <Link
-                            href={`/ilan/${listing.slug}`}
-                            target="_blank"
-                            className="p-1.5 rounded-md text-silver-500 hover:text-cream-100 hover:bg-white/5 transition-colors"
-                            title="Önizle"
-                          >
-                            <Eye size={15} strokeWidth={1.5} />
-                          </Link>
-                          <Link
-                            href={`/admin/ilanlar/${listing.id}/duzenle`}
-                            className="p-1.5 rounded-md text-silver-500 hover:text-gold-400 hover:bg-gold-500/8 transition-colors"
-                            title="Düzenle"
-                          >
-                            <Pencil size={15} strokeWidth={1.5} />
-                          </Link>
-                          <DeleteListingButton id={listing.id} title={listing.titleTr} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-xs text-silver-500">
+                Sayfa {page} / {totalPages} ({total} ilan)
+              </span>
+              <div className="flex items-center gap-2">
+                {page > 1 && (
+                  <Link href={buildUrl(page - 1)}
+                    className="flex items-center gap-1 px-3 py-2 rounded-lg border border-[var(--border-subtle)] text-silver-400 text-sm hover:text-cream-100 transition-colors">
+                    <ChevronLeft size={14} /> Önceki
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={buildUrl(page + 1)}
+                    className="flex items-center gap-1 px-3 py-2 rounded-lg border border-[var(--border-subtle)] text-silver-400 text-sm hover:text-cream-100 transition-colors">
+                    Sonraki <ChevronRight size={14} />
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

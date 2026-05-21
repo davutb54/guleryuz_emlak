@@ -1,4 +1,4 @@
-import Header from "@/components/layout/header";
+import HeaderWrapper from "@/components/layout/header-wrapper";
 import Footer from "@/components/layout/footer";
 
 export default function PublicLayout({
@@ -8,7 +8,7 @@ export default function PublicLayout({
 }) {
   return (
     <>
-      <Header />
+      <HeaderWrapper />
       <main className="flex-1">{children}</main>
       <Footer />
     </>

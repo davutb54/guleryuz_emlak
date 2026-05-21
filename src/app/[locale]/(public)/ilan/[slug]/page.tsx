@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import {
   MapPin,
   BedDouble,
@@ -18,8 +20,16 @@ import {
 } from "lucide-react";
 import ViewCounter from "@/components/listing/view-counter";
 import ListingGallery from "@/components/listing/listing-gallery";
+import ListingMapClient from "@/components/listing/listing-map-client";
 import SimilarListings from "@/components/listing/similar-listings";
+import FavoriteButton from "@/components/listing/favorite-button";
+import ShareButtons from "@/components/listing/share-buttons";
+import CommentForm from "@/components/listing/comment-form";
+import CommentList from "@/components/listing/comment-list";
 import { Link } from "@/i18n/navigation";
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL ?? "https://guleryuzgayrimenkul.com";
 
 const CATEGORY_LABELS: Record<string, string> = {
   HOUSE: "Ev / Daire",
@@ -37,6 +47,61 @@ function formatPrice(price: { toNumber(): number }, currency: string) {
   }).format(price.toNumber());
 }
 
+// ─── Open Graph meta tag üretimi ────────────────────────────────────────────
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; locale: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  const listing = await db.listing.findUnique({
+    where: { slug, status: "ACTIVE" },
+    select: {
+      titleTr: true,
+      descriptionTr: true,
+      district: true,
+      price: true,
+      currency: true,
+      images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+    },
+  });
+
+  if (!listing) return { title: "İlan Bulunamadı" };
+
+  const pageUrl = `${BASE_URL}/tr/ilan/${slug}`;
+  const ogImage = listing.images[0]
+    ? { url: `${BASE_URL}${listing.images[0].url}`, width: 1200, height: 630 }
+    : undefined;
+
+  const priceStr = new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: listing.currency,
+    maximumFractionDigits: 0,
+  }).format(listing.price.toNumber());
+
+  return {
+    title: `${listing.titleTr} — ${priceStr}`,
+    description: `${listing.titleTr}, Eskişehir ${listing.district}. ${listing.descriptionTr.slice(0, 140)}…`,
+    openGraph: {
+      title: listing.titleTr,
+      description: `${priceStr} — Eskişehir, ${listing.district}`,
+      url: pageUrl,
+      siteName: "Güleryüz Gayrimenkul",
+      images: ogImage ? [ogImage] : [],
+      locale: "tr_TR",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: listing.titleTr,
+      description: `${priceStr} — Eskişehir, ${listing.district}`,
+      images: ogImage ? [ogImage.url] : [],
+    },
+  };
+}
+
+// ─── Sayfa ───────────────────────────────────────────────────────────────────
 export default async function IlanDetayPage({
   params,
 }: {
@@ -44,16 +109,35 @@ export default async function IlanDetayPage({
 }) {
   const { slug } = await params;
 
-  const listing = await db.listing.findUnique({
-    where: { slug, status: "ACTIVE" },
-    include: {
-      images: { orderBy: { order: "asc" } },
-      agent: { select: { name: true, phone: true, email: true } },
-      features: true,
-    },
-  });
+  const [listing, session] = await Promise.all([
+    db.listing.findUnique({
+      where: { slug, status: "ACTIVE" },
+      include: {
+        images: { orderBy: { order: "asc" } },
+        agent: { select: { name: true, phone: true, email: true } },
+        features: true,
+        comments: {
+          where: { approved: true },
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { name: true } } },
+        },
+      },
+    }),
+    auth(),
+  ]);
 
   if (!listing) notFound();
+
+  // Kullanıcı bu ilanı favorilemiş mi?
+  let isFavorited = false;
+  if (session?.user?.id) {
+    const fav = await db.favorite.findUnique({
+      where: {
+        userId_listingId: { userId: session.user.id, listingId: listing.id },
+      },
+    });
+    isFavorited = !!fav;
+  }
 
   const galleryImages = listing.images.map((img) => ({
     url: img.url,
@@ -68,6 +152,8 @@ export default async function IlanDetayPage({
     { label: "Havuz", value: listing.hasPool, icon: Waves },
     { label: "Eşyalı", value: listing.furnished, icon: Sofa },
   ].filter((f) => f.value === true);
+
+  const pageUrl = `${BASE_URL}/tr/ilan/${slug}`;
 
   return (
     <div className="min-h-screen bg-navy-900">
@@ -86,10 +172,17 @@ export default async function IlanDetayPage({
           </span>
         </div>
 
-        {/* View count */}
-        <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-navy-900/70 backdrop-blur-sm text-xs text-silver-400">
-          <Eye size={13} strokeWidth={1.5} />
-          {listing.viewCount + 1} görüntülenme
+        {/* Sağ üst: görüntülenme + favori */}
+        <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-navy-900/70 backdrop-blur-sm text-xs text-silver-400">
+            <Eye size={13} strokeWidth={1.5} />
+            {listing.viewCount + 1} görüntülenme
+          </div>
+          <FavoriteButton
+            listingId={listing.id}
+            initialFavorited={isFavorited}
+            size="md"
+          />
         </div>
       </ListingGallery>
 
@@ -222,19 +315,66 @@ export default async function IlanDetayPage({
               </div>
             )}
 
-            {/* Harita placeholder */}
-            <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6">
-              <h2 className="text-sm font-semibold text-silver-300 uppercase tracking-wider mb-4">
-                Konum
-              </h2>
-              {listing.latitude && listing.longitude ? (
-                <div className="h-48 rounded-lg bg-navy-800 border border-[var(--border-subtle)] flex items-center justify-center text-silver-500 text-sm">
-                  <MapPin size={20} className="mr-2 text-gold-500" />
-                  Harita — Faz 3'te Leaflet eklenecek
+            {/* Konum */}
+            {(listing.latitude && listing.longitude) && (
+              <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-silver-300 uppercase tracking-wider">
+                    Konum
+                  </h2>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${listing.latitude},${listing.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gold-500/35 text-gold-500 text-xs font-medium hover:bg-gold-500/8 transition-colors"
+                  >
+                    <MapPin size={12} strokeWidth={1.5} />
+                    Yol Tarifi Al
+                  </a>
                 </div>
-              ) : (
-                <p className="text-silver-500 text-sm">Konum bilgisi mevcut değil.</p>
-              )}
+                <div className="h-64 rounded-xl overflow-hidden border border-[var(--border-subtle)]">
+                  <ListingMapClient
+                    listings={[{
+                      id: listing.id,
+                      slug: listing.slug,
+                      titleTr: listing.titleTr,
+                      price: listing.price.toNumber(),
+                      currency: listing.currency,
+                      district: listing.district,
+                      neighborhood: listing.neighborhood ?? null,
+                      latitude: listing.latitude,
+                      longitude: listing.longitude,
+                      images: listing.images.slice(0, 1).map(img => ({ url: img.url, alt: img.alt ?? null })),
+                    }]}
+                    center={[listing.latitude, listing.longitude]}
+                    zoom={15}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Yorumlar */}
+            <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-silver-300 uppercase tracking-wider mb-6">
+                Yorumlar
+                {listing.comments.length > 0 && (
+                  <span className="ml-2 text-gold-500">({listing.comments.length})</span>
+                )}
+              </h2>
+
+              <div className="mb-8">
+                <CommentList comments={listing.comments} />
+              </div>
+
+              <div className="border-t border-[rgba(216,220,228,0.06)] pt-6">
+                <p className="text-xs font-semibold uppercase tracking-wider text-silver-400 mb-4">
+                  Yorum Yaz
+                </p>
+                <CommentForm
+                  listingId={listing.id}
+                  isLoggedIn={!!session?.user?.id}
+                />
+              </div>
             </div>
           </div>
 
@@ -252,6 +392,16 @@ export default async function IlanDetayPage({
                 {listing.creditEligible && (
                   <p className="text-xs text-green-400 mt-2">✓ Krediye uygun</p>
                 )}
+
+                {/* Favori + Paylaş satırı */}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-[rgba(216,220,228,0.06)]">
+                  <FavoriteButton
+                    listingId={listing.id}
+                    initialFavorited={isFavorited}
+                    size="md"
+                  />
+                  <ShareButtons url={pageUrl} title={listing.titleTr} />
+                </div>
               </div>
 
               {/* Acente iletişim */}
