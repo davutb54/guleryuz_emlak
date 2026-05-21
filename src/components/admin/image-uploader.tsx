@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { ImagePlus, Star, X, Loader2 } from "lucide-react";
+import { ImagePlus, Star, X, Loader2, Video, ChevronUp, ChevronDown } from "lucide-react";
 
 export type UploadedImage = {
-  url: string;       // DB'ye kaydedilen tam URL
-  thumbnail: string; // admin UI önizlemesi için (thumb WebP)
+  url: string;
+  thumbnail: string | null;
+  type: "image" | "video";
   isPrimary: boolean;
   order: number;
 };
@@ -16,9 +17,7 @@ interface ImageUploaderProps {
   onChange: (images: UploadedImage[]) => void;
 }
 
-async function uploadFile(
-  file: File
-): Promise<{ url: string; thumbnail: string } | null> {
+async function uploadFile(file: File): Promise<{ url: string; thumbnail: string | null; type: "image" | "video" } | null> {
   const fd = new FormData();
   fd.append("file", file);
   const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -27,7 +26,8 @@ async function uploadFile(
 }
 
 export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,50 +40,59 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
     setUploadingCount((n) => n + fileArr.length);
 
     const results = await Promise.all(fileArr.map(uploadFile));
-    const successful = results.filter(Boolean) as { url: string; thumbnail: string }[];
+    const successful = results.filter(Boolean) as { url: string; thumbnail: string | null; type: "image" | "video" }[];
 
     if (successful.length < fileArr.length) {
-      setError(`${fileArr.length - successful.length} görsel yüklenemedi.`);
+      setError(`${fileArr.length - successful.length} dosya yüklenemedi.`);
     }
 
     if (successful.length > 0) {
       const startOrder = value.length;
-      const newImages: UploadedImage[] = successful.map((r, i) => ({
+      const newItems: UploadedImage[] = successful.map((r, i) => ({
         url: r.url,
         thumbnail: r.thumbnail,
-        isPrimary: value.length === 0 && i === 0,
+        type: r.type,
+        isPrimary: value.length === 0 && i === 0 && r.type === "image",
         order: startOrder + i,
       }));
-      onChange([...value, ...newImages]);
+      onChange([...value, ...newItems]);
     }
 
     setUploadingCount((n) => n - fileArr.length);
   }
 
   function setPrimary(idx: number) {
-    onChange(value.map((img, i) => ({ ...img, isPrimary: i === idx })));
+    if (value[idx]?.type === "video") return;
+    onChange(value.map((item, i) => ({ ...item, isPrimary: i === idx })));
   }
 
   function remove(idx: number) {
     const removedWasPrimary = value[idx]?.isPrimary ?? false;
     const filtered = value
       .filter((_, i) => i !== idx)
-      .map((img, i) => ({ ...img, order: i, isPrimary: false as boolean }));
-
-    // Silinen primary idiyse kalan ilk görseli primary yap
+      .map((item, i) => ({ ...item, order: i, isPrimary: false as boolean }));
     if (removedWasPrimary && filtered.length > 0) {
-      filtered[0] = { ...filtered[0], isPrimary: true };
+      const firstImage = filtered.findIndex((i) => i.type === "image");
+      if (firstImage >= 0) filtered[firstImage] = { ...filtered[firstImage], isPrimary: true };
     }
     onChange(filtered);
+  }
+
+  function moveItem(idx: number, dir: "up" | "down") {
+    const newValue = [...value];
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= newValue.length) return;
+    [newValue[idx], newValue[swapIdx]] = [newValue[swapIdx], newValue[idx]];
+    onChange(newValue.map((item, i) => ({ ...item, order: i })));
   }
 
   const isUploading = uploadingCount > 0;
 
   return (
     <div className="space-y-3">
-      {/* Dropzone */}
+      {/* Dropzone — sadece resimler için */}
       <div
-        onClick={() => inputRef.current?.click()}
+        onClick={() => imageInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
@@ -91,27 +100,33 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
           setDragOver(false);
           handleFiles(e.dataTransfer.files);
         }}
-        className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl py-8 cursor-pointer transition-colors ${
+        className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl py-7 cursor-pointer transition-colors ${
           dragOver
             ? "border-gold-500 bg-gold-500/5"
             : "border-[rgba(212,167,68,0.25)] hover:border-gold-500/50 hover:bg-white/[0.02]"
         }`}
       >
         {isUploading ? (
-          <Loader2 size={28} strokeWidth={1.5} className="text-gold-500 animate-spin" />
+          <Loader2 size={24} strokeWidth={1.5} className="text-gold-500 animate-spin" />
         ) : (
-          <ImagePlus size={28} strokeWidth={1.5} className="text-silver-500" />
+          <ImagePlus size={24} strokeWidth={1.5} className="text-silver-500" />
         )}
         <p className="text-sm text-silver-400">
-          {isUploading
-            ? `${uploadingCount} görsel yükleniyor…`
-            : "Fotoğraf eklemek için tıklayın veya sürükleyin"}
+          {isUploading ? `${uploadingCount} dosya yükleniyor…` : "Fotoğraf ekle — tıklayın veya sürükleyin"}
         </p>
         <p className="text-xs text-silver-600">JPG, PNG, WebP · Maks 10 MB</p>
       </div>
 
+      {/* Video yükleme butonu */}
+      <label className="flex items-center justify-center gap-2 border border-[rgba(212,167,68,0.2)] rounded-xl py-3 cursor-pointer text-sm text-silver-400 hover:border-gold-500/40 hover:text-cream-100 transition-colors">
+        <Video size={16} strokeWidth={1.5} className="shrink-0" />
+        Video Ekle (MP4, WebM · Maks 50 MB)
+        <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden"
+          onChange={(e) => e.target.files && handleFiles(e.target.files)} />
+      </label>
+
       <input
-        ref={inputRef}
+        ref={imageInputRef}
         type="file"
         multiple
         accept="image/jpeg,image/png,image/webp"
@@ -119,63 +134,80 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
       />
 
-      {error && (
-        <p className="text-xs text-red-400">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-400">{error}</p>}
 
-      {/* Thumbnail grid */}
+      {/* Medya grid */}
       {value.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-          {value.map((img, i) => (
-            <div key={img.url} className="relative group aspect-[4/3] rounded-lg overflow-hidden bg-navy-800">
-              <Image
-                src={img.thumbnail}
-                alt={`Görsel ${i + 1}`}
-                fill
-                sizes="120px"
-                className="object-cover"
-              />
+        <div className="space-y-2">
+          <p className="text-xs text-silver-500 uppercase tracking-wider">Medya Sıralaması</p>
+          {value.map((item, i) => (
+            <div key={item.url}
+              className="flex items-center gap-3 bg-navy-800 border border-[rgba(255,255,255,0.06)] rounded-xl p-2">
+              {/* Önizleme */}
+              <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-navy-700 shrink-0">
+                {item.type === "image" && item.thumbnail ? (
+                  <Image src={item.thumbnail} alt="" fill sizes="64px" className="object-cover" />
+                ) : item.type === "image" && item.url ? (
+                  <Image src={item.url} alt="" fill sizes="64px" className="object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Video size={20} strokeWidth={1} className="text-silver-500" />
+                  </div>
+                )}
+                {item.isPrimary && (
+                  <div className="absolute top-0.5 left-0.5 px-1 py-px rounded text-[9px] font-bold bg-gold-500 text-navy-900 leading-tight">
+                    Ana
+                  </div>
+                )}
+              </div>
 
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                {/* Primary yıldız */}
-                <button
-                  type="button"
-                  onClick={() => setPrimary(i)}
-                  title="Ana fotoğraf yap"
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                    img.isPrimary
-                      ? "bg-gold-500 text-navy-900"
-                      : "bg-navy-900/70 text-silver-300 hover:bg-gold-500/20 hover:text-gold-400"
-                  }`}
-                >
-                  <Star size={13} strokeWidth={2} fill={img.isPrimary ? "currentColor" : "none"} />
+              {/* Bilgi */}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-cream-200 truncate">
+                  {item.type === "video" ? "Video" : "Fotoğraf"} #{i + 1}
+                </p>
+                <p className="text-[10px] text-silver-600 truncate">{item.url.split("/").pop()}</p>
+              </div>
+
+              {/* Aksiyonlar */}
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Sırala */}
+                <button type="button" onClick={() => moveItem(i, "up")} disabled={i === 0} title="Yukarı"
+                  className="w-7 h-7 rounded flex items-center justify-center text-silver-500 hover:text-cream-100 hover:bg-white/5 transition-colors disabled:opacity-25">
+                  <ChevronUp size={14} strokeWidth={1.5} />
+                </button>
+                <button type="button" onClick={() => moveItem(i, "down")} disabled={i === value.length - 1} title="Aşağı"
+                  className="w-7 h-7 rounded flex items-center justify-center text-silver-500 hover:text-cream-100 hover:bg-white/5 transition-colors disabled:opacity-25">
+                  <ChevronDown size={14} strokeWidth={1.5} />
                 </button>
 
+                {/* Ana fotoğraf — sadece resimler için */}
+                {item.type === "image" && (
+                  <button type="button" onClick={() => setPrimary(i)} title="Ana fotoğraf yap"
+                    className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+                      item.isPrimary ? "bg-gold-500 text-navy-900" : "text-silver-400 hover:text-gold-400 hover:bg-white/5"
+                    }`}>
+                    <Star size={13} strokeWidth={2} fill={item.isPrimary ? "currentColor" : "none"} />
+                  </button>
+                )}
+
                 {/* Sil */}
-                <button
-                  type="button"
-                  onClick={() => remove(i)}
-                  title="Kaldır"
-                  className="w-7 h-7 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
-                >
+                <button type="button" onClick={() => remove(i)} title="Kaldır"
+                  className="w-7 h-7 rounded flex items-center justify-center text-silver-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                   <X size={13} strokeWidth={2} />
                 </button>
               </div>
-
-              {/* Primary badge */}
-              {img.isPrimary && (
-                <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-gold-500 text-navy-900">
-                  Ana
-                </div>
-              )}
             </div>
           ))}
 
           {/* Yükleniyor placeholder'ları */}
           {Array.from({ length: uploadingCount }).map((_, i) => (
-            <div key={`uploading-${i}`} className="aspect-[4/3] rounded-lg bg-navy-800 border border-[rgba(212,167,68,0.12)] flex items-center justify-center">
-              <Loader2 size={18} strokeWidth={1.5} className="text-gold-500 animate-spin" />
+            <div key={`uploading-${i}`}
+              className="flex items-center gap-3 bg-navy-800 border border-[rgba(212,167,68,0.12)] rounded-xl p-2">
+              <div className="w-16 h-12 rounded-lg bg-navy-700 flex items-center justify-center shrink-0">
+                <Loader2 size={16} strokeWidth={1.5} className="text-gold-500 animate-spin" />
+              </div>
+              <p className="text-xs text-silver-500">Yükleniyor...</p>
             </div>
           ))}
         </div>

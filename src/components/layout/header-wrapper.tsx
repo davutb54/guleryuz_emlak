@@ -36,7 +36,7 @@ export default async function HeaderWrapper() {
     <Header
       user={
         session?.user
-          ? { id: session.user.id, name: session.user.name, email: session.user.email }
+          ? { id: session.user.id, name: session.user.name, email: session.user.email, role: session.user.role }
           : null
       }
       notifications={notifications}

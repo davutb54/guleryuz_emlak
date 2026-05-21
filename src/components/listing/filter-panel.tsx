@@ -119,9 +119,9 @@ function RangeInputs({
 
   return (
     <div className="space-y-2">
-      {/* Slider track (tek slider, iki değer için birbirinden bağımsız) */}
-      <div className="flex gap-2">
-        <div className="flex-1">
+      {/* Slider track */}
+      <div className="flex gap-2 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0">
           <input
             type="range"
             min={min ?? 0}
@@ -132,7 +132,7 @@ function RangeInputs({
             className="w-full accent-gold-500 h-1 cursor-pointer"
           />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <input
             type="range"
             min={min ?? 0}
@@ -264,7 +264,7 @@ export default function FilterPanel({ initialFilters, onClose }: FilterPanelProp
   const isShop = state.category === "SHOP";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Başlık */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2 text-silver-300 text-sm font-semibold">
@@ -288,7 +288,7 @@ export default function FilterPanel({ initialFilters, onClose }: FilterPanelProp
       </div>
 
       {/* Kaydırılabilir içerik */}
-      <div className="flex-1 overflow-y-auto space-y-5 pr-0.5">
+      <div className="flex-1 overflow-y-auto space-y-5 pr-1 scrollbar-gold">
 
         {/* ── Tür ── */}
         <div>
@@ -349,23 +349,37 @@ export default function FilterPanel({ initialFilters, onClose }: FilterPanelProp
           </div>
         </div>
 
-        {/* ── Mahalle — sadece tek ilçe seçiliyken görünür ── */}
-        {state.districts.length === 1 && (() => {
-          const mahalles = getNeighborhoods(state.districts[0]);
-          if (mahalles.length === 0) return null;
+        {/* ── Mahalle — seçili ilçelerin mahalleleri (gruplu) ── */}
+        {state.districts.length > 0 && (() => {
+          const groups = state.districts
+            .map((d) => ({ district: d, mahalles: getNeighborhoods(d) }))
+            .filter((g) => g.mahalles.length > 0);
+          if (groups.length === 0) return null;
+          const multiGroup = groups.length > 1;
           return (
             <>
               <Divider />
               <div>
                 <SectionLabel>Mahalle</SectionLabel>
-                <div className="flex flex-wrap gap-1.5">
-                  {mahalles.map((m) => (
-                    <Pill
-                      key={m}
-                      label={m}
-                      active={state.neighborhoods.includes(m)}
-                      onClick={() => toggleArray("neighborhoods", m)}
-                    />
+                <div className="space-y-3">
+                  {groups.map(({ district, mahalles }) => (
+                    <div key={district}>
+                      {multiGroup && (
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gold-600 mb-1.5">
+                          {district}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {mahalles.map((m) => (
+                          <Pill
+                            key={`${district}-${m}`}
+                            label={m}
+                            active={state.neighborhoods.includes(m)}
+                            onClick={() => toggleArray("neighborhoods", m)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

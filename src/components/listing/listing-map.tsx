@@ -53,7 +53,7 @@ export default function ListingMap({
   const mapZoom = zoom ?? 12;
 
   return (
-    <>
+    <div style={{ height: "100%", width: "100%", isolation: "isolate" }}>
       {/* Leaflet popup renk overrides */}
       <style>{`
         .leaflet-popup-content-wrapper {
@@ -175,6 +175,6 @@ export default function ListingMap({
           </Marker>
         ))}
       </MapContainer>
-    </>
+    </div>
   );
 }

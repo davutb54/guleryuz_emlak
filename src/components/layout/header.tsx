@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { Menu, X, UserCircle2, LogOut } from "lucide-react";
-import { Link, usePathname } from "@/i18n/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { Menu, X, UserCircle2, LogOut, LayoutDashboard } from "lucide-react";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 import NotificationDropdown from "./notification-dropdown";
@@ -24,27 +25,55 @@ interface Notification {
   createdAt: Date;
 }
 
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "AGENT"];
+
 interface HeaderProps {
-  user: { id: string; name?: string | null; email?: string | null } | null;
+  user: { id: string; name?: string | null; email?: string | null; role?: string | null } | null;
   notifications: Notification[];
   unreadCount: number;
 }
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-3 shrink-0">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-500">
-        <span className="font-display text-lg font-bold text-navy-900 leading-none">G</span>
-      </div>
-      <div className="hidden sm:block">
-        <p className="font-display text-sm font-bold text-cream-50 leading-tight tracking-[0.12em]">
-          GÜLERYÜZ
-        </p>
-        <p className="text-[9px] font-sans font-medium text-silver-400 tracking-[0.22em] uppercase mt-0.5">
-          GAYRİMENKUL
-        </p>
-      </div>
+    <Link href="/" className="shrink-0 flex items-center">
+      <Image
+        src="/brand/logo.svg"
+        alt="Güleryüz Gayrimenkul"
+        width={72}
+        height={72}
+        className="h-16 w-16 object-contain"
+        priority
+      />
     </Link>
+  );
+}
+
+function LocaleSwitcher({ className }: { className?: string }) {
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  function switchLocale(next: string) {
+    router.replace(pathname, { locale: next });
+  }
+
+  return (
+    <div className={cn("flex items-center gap-0.5 rounded-full border border-[--border-subtle] px-1 py-0.5", className)}>
+      {(["tr", "en"] as const).map((l) => (
+        <button
+          key={l}
+          onClick={() => switchLocale(l)}
+          className={cn(
+            "rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider transition-colors",
+            locale === l
+              ? "bg-gold-500 text-navy-900"
+              : "text-silver-400 hover:text-cream-100"
+          )}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -83,8 +112,18 @@ export default function Header({ user, notifications, unreadCount }: HeaderProps
 
         {/* Desktop sağ aksiyonlar */}
         <div className="hidden md:flex items-center gap-2">
+          <LocaleSwitcher />
           {user ? (
             <>
+              {user.role && ADMIN_ROLES.includes(user.role) && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold-500/10 border border-gold-500/20 text-gold-400 hover:bg-gold-500/20 text-xs font-medium transition-colors"
+                >
+                  <LayoutDashboard size={13} strokeWidth={1.5} />
+                  Panel
+                </Link>
+              )}
               <NotificationDropdown
                 notifications={notifications}
                 unreadCount={unreadCount}
@@ -147,9 +186,22 @@ export default function Header({ user, notifications, unreadCount }: HeaderProps
               </Link>
             ))}
           </nav>
+          <div className="mt-3 flex justify-center">
+            <LocaleSwitcher />
+          </div>
           <div className="mt-4 flex flex-col gap-2 border-t border-[--border-divider] pt-4">
             {user ? (
               <>
+                {user.role && ADMIN_ROLES.includes(user.role) && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    className="rounded-full border border-gold-500/30 py-2.5 text-center text-sm font-medium text-gold-400 flex items-center justify-center gap-2"
+                  >
+                    <LayoutDashboard size={15} strokeWidth={1.5} />
+                    Yönetim Paneli
+                  </Link>
+                )}
                 <Link
                   href="/profil"
                   onClick={() => setOpen(false)}

@@ -5,9 +5,21 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 
 export const metadata: Metadata = {
-  title: "Güleryüz Gayrimenkul — Eskişehir",
+  title: {
+    template: "%s — Güleryüz Gayrimenkul",
+    default: "Güleryüz Gayrimenkul — Eskişehir Emlak",
+  },
   description:
     "Eskişehir'in güvenilir emlak ofisi. Satılık ve kiralık ev, arsa, tarla, dükkan ilanları.",
+  openGraph: {
+    siteName: "Güleryüz Gayrimenkul",
+    locale: "tr_TR",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export function generateStaticParams() {

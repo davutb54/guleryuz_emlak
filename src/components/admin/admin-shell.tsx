@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import AdminSidebar from "./sidebar";
+import { Link } from "@/i18n/navigation";
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -47,9 +48,9 @@ export default function AdminShell({ children, user, locale }: AdminShellProps) 
           >
             <Menu size={20} />
           </button>
-          <span className="ml-3 font-display text-gold-500 text-sm font-semibold tracking-wide uppercase">
+          <Link href="/" className="ml-3 font-display text-gold-500 text-sm font-semibold tracking-wide uppercase hover:text-gold-400 transition-colors">
             Güleryüz Admin
-          </span>
+          </Link>
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}

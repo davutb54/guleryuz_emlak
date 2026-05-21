@@ -84,6 +84,16 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
   if (filters.heating) where.heating = filters.heating;
   if (filters.zoningStatus) where.zoningStatus = filters.zoningStatus;
 
+  if (filters.q) {
+    const term = filters.q.trim();
+    where.OR = [
+      { titleTr: { contains: term } },
+      { descriptionTr: { contains: term } },
+      { district: { contains: term } },
+      { neighborhood: { contains: term } },
+    ];
+  }
+
   // ─── Sıralama ────────────────────────────────────────────────────────────
   const orderBy = {
     newest: { createdAt: "desc" as const },
@@ -155,7 +165,11 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
               </p>
               <h1 className="font-display text-display-lg text-cream-50">İlanlar</h1>
               <p className="text-silver-500 mt-1 text-sm">
-                {total} ilan — {mapListings.length} konumlu
+                {filters.q ? (
+                  <><span className="text-cream-200">&ldquo;{filters.q}&rdquo;</span> için {total} ilan — {mapListings.length} konumlu</>
+                ) : (
+                  <>{total} ilan — {mapListings.length} konumlu</>
+                )}
               </p>
             </div>
             <div className="hidden lg:block">
@@ -247,7 +261,13 @@ export default async function IlanlarPage({ searchParams }: PageProps) {
               Güleryüz Gayrimenkul
             </p>
             <h1 className="font-display text-display-lg text-cream-50">İlanlar</h1>
-            <p className="text-silver-500 mt-1 text-sm">{total} ilan bulundu</p>
+            <p className="text-silver-500 mt-1 text-sm">
+              {filters.q ? (
+                <><span className="text-cream-200">&ldquo;{filters.q}&rdquo;</span> için {total} sonuç</>
+              ) : (
+                <>{total} ilan bulundu</>
+              )}
+            </p>
           </div>
           <div className="hidden lg:block">
             <ViewToggle listUrl={listUrl} mapUrl={mapUrl} currentView="liste" />

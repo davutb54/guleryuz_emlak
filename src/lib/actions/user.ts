@@ -57,6 +57,69 @@ export async function changeUserRole(
   return { success: true };
 }
 
+const titleSchema = z.object({
+  title: z.string().max(100).optional().or(z.literal("")),
+});
+
+const TITLE_ELIGIBLE_ROLES = ["AGENT", "ADMIN", "SUPER_ADMIN"] as const;
+
+export async function updateUserTitle(
+  targetId: string,
+  raw: unknown
+): Promise<ActionResult> {
+  const admin = await getAdminUser();
+  if (!admin) return { success: false, error: "Yetkisiz erişim" };
+
+  const parsed = titleSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetId },
+    select: { role: true },
+  });
+  if (!target) return { success: false, error: "Kullanıcı bulunamadı" };
+  if (!(TITLE_ELIGIBLE_ROLES as readonly string[]).includes(target.role)) {
+    return { success: false, error: "Ünvan yalnızca yetkili kullanıcılara atanabilir" };
+  }
+
+  await db.user.update({
+    where: { id: targetId },
+    data: { title: parsed.data.title || null },
+  });
+
+  await auditLog(admin.id, "user.title_update", "User", targetId);
+  revalidatePath("/admin/kullanicilar");
+  revalidatePath("/hakkimizda");
+  return { success: true };
+}
+
+const selfProfileSchema = z.object({
+  name: z.string().min(2, "Ad en az 2 karakter olmalı").max(100),
+  phone: z.string().max(30).optional().or(z.literal("")),
+  avatar: z.string().min(1).optional().or(z.literal("")),
+});
+
+export async function updateSelfProfile(raw: unknown): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Giriş yapmanız gerekiyor" };
+
+  const parsed = selfProfileSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri" };
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: {
+      name: parsed.data.name,
+      phone: parsed.data.phone || null,
+      avatar: parsed.data.avatar || null,
+    },
+  });
+
+  revalidatePath("/profil");
+  revalidatePath("/hakkimizda");
+  return { success: true };
+}
+
 export async function toggleBanUser(targetId: string): Promise<ActionResult> {
   const admin = await getAdminUser();
   if (!admin) return { success: false, error: "Yetkisiz erişim" };

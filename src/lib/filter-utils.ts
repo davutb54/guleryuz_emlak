@@ -3,6 +3,7 @@
 import { LISTING_CATEGORIES, LISTING_TYPES } from "@/lib/validations/listing";
 
 export type FilterState = {
+  q?: string;
   category?: (typeof LISTING_CATEGORIES)[number];
   type?: (typeof LISTING_TYPES)[number];
   districts: string[];
@@ -52,6 +53,7 @@ export function parseFiltersFromUrl(params: URLSearchParams): FilterState {
   const rawType = get("tur");
 
   return {
+    q: get("ara") || undefined,
     category: LISTING_CATEGORIES.includes(rawCategory as never)
       ? (rawCategory as FilterState["category"])
       : undefined,
@@ -86,6 +88,7 @@ export function buildFilterUrl(
 ): string {
   const p = new URLSearchParams();
 
+  if (state.q) p.set("ara", state.q);
   if (state.category) p.set("kategori", state.category);
   if (state.type) p.set("tur", state.type);
   (state.districts ?? []).forEach((d) => p.append("ilce", d));
@@ -114,6 +117,7 @@ export function buildFilterUrl(
 // Aktif filtre sayısı (sayfa/sıralama hariç — mobile badge için)
 export function countActiveFilters(state: Partial<FilterState>): number {
   let count = 0;
+  if (state.q) count++;
   if (state.category) count++;
   if (state.type) count++;
   if ((state.districts ?? []).length) count++;

@@ -48,9 +48,9 @@ export default function AdminSidebar({ user, onNavigate }: SidebarProps) {
     <aside className="w-64 h-full flex flex-col bg-navy-950 border-r border-[var(--border-subtle)] shrink-0">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)]">
-        <span className="font-display text-gold-500 font-semibold tracking-wide text-sm uppercase">
+        <Link href="/" className="font-display text-gold-500 font-semibold tracking-wide text-sm uppercase hover:text-gold-400 transition-colors">
           Güleryüz Admin
-        </span>
+        </Link>
       </div>
 
       {/* Navigasyon */}

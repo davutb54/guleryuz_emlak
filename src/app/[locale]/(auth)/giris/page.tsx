@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "@/i18n/navigation";
 import { Link } from "@/i18n/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
+import { signIn } from "next-auth/react";
+import GoogleSignInButton from "@/components/shared/google-sign-in-button";
 
 export default function GirisPage() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isPending) return;
     setError(null);
     const form = e.currentTarget;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
@@ -29,8 +29,7 @@ export default function GirisPage() {
       if (result?.error) {
         setError("E-posta veya şifre hatalı.");
       } else {
-        router.push("/admin");
-        router.refresh();
+        window.location.href = "/";
       }
     });
   }
@@ -47,7 +46,7 @@ export default function GirisPage() {
       </div>
 
       <div className="bg-navy-850 border border-[rgba(212,167,68,0.15)] rounded-2xl p-8">
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} method="post" className="space-y-5">
           {/* E-posta */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-silver-400 mb-2">
@@ -97,8 +96,7 @@ export default function GirisPage() {
           {/* Giriş butonu */}
           <button
             type="submit"
-            disabled={isPending}
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gold-500 text-navy-900 font-semibold text-sm hover:bg-gold-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gold-500 text-navy-900 font-semibold text-sm transition-colors ${isPending ? "opacity-60 cursor-not-allowed pointer-events-none" : "hover:bg-gold-400"}`}
           >
             {isPending ? (
               <span className="w-4 h-4 border-2 border-navy-900/40 border-t-navy-900 rounded-full animate-spin" />
@@ -108,6 +106,16 @@ export default function GirisPage() {
             {isPending ? "Giriş yapılıyor…" : "Giriş Yap"}
           </button>
         </form>
+
+        {/* Ayırıcı */}
+        <div className="flex items-center gap-3 my-6">
+          <div className="flex-1 h-px bg-[rgba(216,220,228,0.1)]" />
+          <span className="text-xs text-silver-600 uppercase tracking-wider">veya</span>
+          <div className="flex-1 h-px bg-[rgba(216,220,228,0.1)]" />
+        </div>
+
+        {/* Google butonu */}
+        <GoogleSignInButton />
 
         {/* Kayıt linki */}
         <p className="text-center text-silver-500 text-sm mt-6">

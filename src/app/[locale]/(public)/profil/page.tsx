@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import SearchAlertForm from "@/components/listing/search-alert-form";
 import DeleteSearchAlertButton from "@/components/listing/delete-search-alert-button";
+import AvatarUpload from "@/components/shared/avatar-upload";
+import ProfileEditForm from "@/components/shared/profile-edit-form";
 
 function formatPrice(price: { toNumber(): number }, currency: string) {
   return new Intl.NumberFormat("tr-TR", {
@@ -39,7 +41,7 @@ export default async function ProfilPage({
   const [user, favorites, comments, searchAlerts] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
-      select: { name: true, email: true, createdAt: true },
+      select: { name: true, email: true, phone: true, avatar: true, createdAt: true },
     }),
     db.favorite.findMany({
       where: { userId },
@@ -88,14 +90,19 @@ export default async function ProfilPage({
             Hesabım
           </p>
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-navy-800 border border-[var(--border-subtle)] flex items-center justify-center">
-              <UserCircle2 size={32} strokeWidth={1} className="text-silver-500" />
-            </div>
+            <AvatarUpload currentAvatar={user.avatar} currentName={user.name} />
             <div>
               <h1 className="font-display text-display-sm text-cream-50">
                 {user.name}
               </h1>
               <p className="text-silver-500 text-sm">{user.email}</p>
+              {user.phone && (
+                <p className="text-silver-500 text-xs mt-0.5">{user.phone}</p>
+              )}
+              <div className="flex items-center gap-3 mt-2">
+                <ProfileEditForm name={user.name} phone={user.phone ?? null} avatar={user.avatar ?? null} />
+                <p className="text-silver-600 text-xs">Fotoğrafa tıkla → değiştir</p>
+              </div>
             </div>
           </div>
         </div>
@@ -276,9 +283,12 @@ export default async function ProfilPage({
                     className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-4"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="text-cream-200 text-xs font-medium line-clamp-1">
+                      <Link
+                        href={`/ilan/${comment.listing.slug}`}
+                        className="text-cream-200 text-xs font-medium line-clamp-1 hover:text-gold-400 transition-colors"
+                      >
                         {comment.listing.titleTr}
-                      </p>
+                      </Link>
                       <span
                         className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider ${
                           comment.approved

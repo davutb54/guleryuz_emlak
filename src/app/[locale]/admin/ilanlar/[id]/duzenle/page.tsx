@@ -59,7 +59,7 @@ export default async function DuzenlePage({
       featured: true,
       images: {
         orderBy: { order: "asc" },
-        select: { url: true, isPrimary: true, order: true },
+        select: { url: true, type: true, isPrimary: true, order: true },
       },
     },
   });
@@ -76,7 +76,8 @@ export default async function DuzenlePage({
   // Mevcut görseller → UploadedImage formatına çevir
   const initialImages = images.map((img) => ({
     url: img.url,
-    thumbnail: img.url.replace(".webp", "_thumb.webp"),
+    type: (img.type as "image" | "video") ?? "image",
+    thumbnail: img.type === "video" ? null : img.url.replace(".webp", "_thumb.webp"),
     isPrimary: img.isPrimary,
     order: img.order,
   }));

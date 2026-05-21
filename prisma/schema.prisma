@@ -40,6 +40,7 @@ model User {
   email            String    @unique
   passwordHash     String?
   name             String
+  title            String?
   phone            String?
   avatar           String?
   role             Role      @default(USER)
@@ -146,6 +147,7 @@ model ListingImage {
   id        String  @id @default(cuid())
   listingId String
   url       String
+  type      String  @default("image")
   order     Int     @default(0)
   alt       String?
   isPrimary Boolean @default(false)
@@ -260,13 +262,23 @@ model AuditLog {
 }
 
 model SiteSettings {
-  id           Int      @id @default(1)
-  contactEmail String
-  contactPhone String
-  address      String
-  workingHours String
-  socialLinks  String
-  aboutTr      String?
-  aboutEn      String?
-  updatedAt    DateTime @updatedAt
+  id               Int      @id @default(1)
+  contactEmail     String
+  contactPhone     String
+  address          String
+  workingHours     String
+  socialLinks      String
+  aboutTr          String?
+  aboutEn          String?
+  kvkkText         String?
+  privacyText      String?
+  termsText        String?
+  contactLat       Float?
+  contactLng       Float?
+  officePhoto      String?
+  statYear         String?
+  statTransactions String?
+  statCustomers    String?
+  statSatisfaction String?
+  updatedAt        DateTime @updatedAt
 }

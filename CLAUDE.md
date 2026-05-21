@@ -1,6 +1,6 @@
 # Güleryüz Gayrimenkul — Proje Brief (CLAUDE.md)
 
-> **Son Güncelleme: 2026-05-21 — Faz 5 tamamlandı + güvenlik sağlamlaştırması ✅ — Faz 6 sırada**
+> **Son Güncelleme: 2026-05-21 — Faz 6 A aşaması tamamlandı (sayfalar + SEO + KVKK) ✅ — Faz 6 B (deployment) sırada**
 
 > Bu dosya Claude Code için proje bağlamıdır. Her oturumda otomatik okunur.
 > Proje hakkındaki TÜM kararlar, mimari, yol haritası burada tutulur.
@@ -493,13 +493,13 @@ Post-Faz-4 düzeltmeleri (12 madde):
 - [x] 2FA kurulum akışı — TOTP (otpauth) QR setup + login sonrası doğrulama (signed cookie)
 
 ### Faz 6: Sayfalar + Cila + Deployment
-- [ ] Hakkımızda sayfası
-- [ ] İletişim sayfası + form + harita
-- [ ] Galeri/Anılar sayfası (lightbox, video player)
-- [ ] SEO: sitemap.xml, robots.txt, Schema.org RealEstateListing JSON-LD
-- [ ] OpenGraph + Twitter Cards
-- [ ] KVKK aydınlatma + cookie consent
-- [ ] Kullanım koşulları + gizlilik
+- [x] Hakkımızda sayfası — SiteSettings + DB team listesi, istatistikler, değerler, CTA
+- [x] İletişim sayfası + form + harita — `submitContact` Server Action + rate limit + Leaflet ofis haritası
+- [x] Galeri/Anılar sayfası — masonry grid, filtre sekmeleri, fotoğraf lightbox, YouTube/Vimeo video modal
+- [x] SEO: sitemap.xml, robots.txt, Schema.org RealEstateListing JSON-LD (ilan detayda)
+- [x] OpenGraph + Twitter Cards — tüm yeni sayfalarda `generateMetadata` eklendi
+- [x] KVKK aydınlatma + cookie consent banner (`localStorage` tabanlı)
+- [x] Kullanım koşulları (`/kosullar`) + gizlilik politikası (`/gizlilik`)
 - [ ] Performance audit (Lighthouse 90+)
 - [ ] Accessibility (WCAG AA)
 - [ ] VPS kurulum: Nginx + PM2 + Certbot
@@ -550,17 +550,15 @@ sudo certbot --nginx -d guleryuzgayrimenkul.com -d www.guleryuzgayrimenkul.com
 
 ## 10. Sonraki Adım
 
-**Faz 5 Admin Paneli tamamlandı (2026-05-20). Faz 5 güvenlik sağlamlaştırması (2026-05-21).** Faz 6 sırada.
+**Faz 6 A aşaması tamamlandı (2026-05-21).** Faz 6 B (deployment) sırada.
 
-Faz 6 öncelik sırası:
-1. **Hakkımızda sayfası** — SiteSettings'ten `aboutTr` içeriği + ofis/ekip görselleri
-2. **İletişim sayfası** — form (`ContactMessage` oluşturma) + `/api/contact` route + Leaflet harita + iletişim bilgileri
-3. **Galeri/Anılar sayfası** — lightbox (fotoğraf) + video player, GalleryItem listesi
-4. **SEO** — `sitemap.xml`, `robots.txt`, Schema.org RealEstateListing JSON-LD
-5. **OpenGraph + Twitter Cards** — tüm sayfalarda doğru OG tag (ilan detay zaten var)
-6. **KVKK + Gizlilik** — aydınlatma metni + cookie consent banner
-7. **Performance** — Lighthouse 90+, resimlerde `priority` + `loading="lazy"` audit
-8. **VPS Deployment** — Nginx + PM2 + Certbot, `ecosystem.config.js` yazılacak
+Faz 6 B öncelik sırası:
+1. **`ecosystem.config.js`** — PM2 config (instances: 1, watch: false, restart policy)
+2. **`README.md`** — kurulum talimatları (VPS, env, seed, nginx, pm2, certbot)
+3. **VPS Deployment** — Nginx + PM2 + Certbot, rate limiting (Nginx seviyesi 100 req/dk per IP)
+4. **Backup** — cron script (SQLite → Cloudflare R2 / Backblaze B2, her gece)
+5. **Performance** — Lighthouse 90+ audit, LCP görsellerine `priority` prop
+6. **Logo + Hero fotoğrafı** — `/public/brand/logo.svg` + `/public/images/hero-bg.jpg`
 
 ---
 
@@ -874,6 +872,19 @@ Faz 1'de planlananın dışına çıkan veya dikkat gerektiren teknik kararlar:
 - `/api/upload` POST handler'a rate limit eklendi: 30 yükleme/saat per user ID.
 - `checkRateLimit(`upload:${session.user.id}`, 30, 3600000)` — `rate-limit.ts`'teki in-memory limiter kullanılıyor.
 - 429 döndürüldüğünde hata mesajı: "Çok fazla yükleme isteği. Lütfen bir saat bekleyin."
+
+### Faz 6: Public Sayfalar + SEO
+
+- **Hakkımızda** — `SiteSettings.aboutTr` + DB'den `role IN [SUPER_ADMIN, ADMIN, AGENT]` kullanıcılar. Avatar yoksa ismin ilk harfi gold renkte gösteriliyor.
+- **İletişim** — `submitContact()` Server Action `contact.ts`'e eklendi. Rate limit: 3 mesaj/saat per IP. `ContactForm` (client) + `OfficeMapClient` (Leaflet ssr:false pattern). `contactSchema` — `src/lib/validations/contact.ts`.
+- **Galeri** — `GalleryClient` masonry CSS `columns-1 sm:columns-2 lg:columns-3` + filtre sekmeleri + fotoğraf lightbox + YouTube/Vimeo embed modal (getYoutubeId/getVimeoId helper). Video yoksa `<video>` tag fallback.
+- **sitemap.ts** — Next.js `MetadataRoute.Sitemap` API, aktif ilanlar dinamik, statik sayfalar sabit. `NEXT_PUBLIC_BASE_URL` env var.
+- **robots.ts** — `/admin/*` ve `/api/*` disallow, sitemap pointer.
+- **Schema.org JSON-LD** — `RealEstateListing` + `Offer` + `PostalAddress` + `GeoCoordinates` + `floorSize` — ilan detay sayfasında `<script type="application/ld+json">`.
+- **Cookie consent** — `localStorage` tabanlı `CookieBanner` client component, public layout'a eklendi. Key: `guleryuz-cookie-consent`.
+- **env tutarsızlığı düzeltildi** — `.env.example`'da `NEXT_PUBLIC_SITE_URL` → `NEXT_PUBLIC_BASE_URL` olarak güncellendi (kod ile uyumlu).
+- **next.config.ts** — `images.formats: ["image/webp"]` + `minimumCacheTTL: 31536000` eklendi. React Compiler paket gerektirdiğinden eklenmedi (opsiyonel: `npm install babel-plugin-react-compiler` + `reactCompiler: true` root seviyede).
+- **`/kullanim-kosullari`** — fazladan oluşturuldu (silinmedi), `/kosullar` footer ile uyumlu asıl sayfa.
 
 ### Faz 5: Admin İlan Listesi Sayfalama
 

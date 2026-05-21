@@ -119,7 +119,7 @@ export default async function IlanDetayPage({
         comments: {
           where: { approved: true },
           orderBy: { createdAt: "desc" },
-          include: { user: { select: { name: true } } },
+          select: { id: true, content: true, rating: true, createdAt: true, userId: true, user: { select: { name: true } } },
         },
       },
     }),
@@ -142,6 +142,7 @@ export default async function IlanDetayPage({
   const galleryImages = listing.images.map((img) => ({
     url: img.url,
     alt: img.alt,
+    type: img.type as "image" | "video",
   }));
 
   const boolFeatures = [
@@ -155,8 +156,53 @@ export default async function IlanDetayPage({
 
   const pageUrl = `${BASE_URL}/tr/ilan/${slug}`;
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    name: listing.titleTr,
+    description: listing.descriptionTr,
+    url: pageUrl,
+    datePosted: listing.createdAt,
+    ...(listing.images[0] && {
+      image: `${BASE_URL}${listing.images[0].url}`,
+    }),
+    offers: {
+      "@type": "Offer",
+      price: listing.price.toNumber(),
+      priceCurrency: listing.currency,
+      availability:
+        listing.status === "ACTIVE"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/SoldOut",
+    },
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: listing.district,
+      addressRegion: "Eskişehir",
+      addressCountry: "TR",
+    },
+    ...(listing.latitude &&
+      listing.longitude && {
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: listing.latitude,
+          longitude: listing.longitude,
+        },
+      }),
+    floorSize: {
+      "@type": "QuantitativeValue",
+      value: listing.area,
+      unitCode: "MTK",
+    },
+    numberOfRooms: listing.rooms ?? undefined,
+  };
+
   return (
     <div className="min-h-screen bg-navy-900">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* View sayacı (invisible) */}
       <ViewCounter listingId={listing.id} />
 
@@ -186,7 +232,7 @@ export default async function IlanDetayPage({
         </div>
       </ListingGallery>
 
-      <div className="max-w-[1440px] mx-auto px-5 lg:px-16 -mt-16 relative pb-16">
+      <div className="max-w-[1440px] mx-auto px-5 lg:px-16 pt-6 relative pb-16">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* ─── Sol: Detaylar ──────────────────────────────────────────────── */}
           <div className="flex-1 min-w-0">
@@ -363,7 +409,11 @@ export default async function IlanDetayPage({
               </h2>
 
               <div className="mb-8">
-                <CommentList comments={listing.comments} />
+                <CommentList
+                  comments={listing.comments}
+                  currentUserId={session?.user?.id ?? null}
+                  isAdmin={["ADMIN", "SUPER_ADMIN"].includes(session?.user?.role ?? "")}
+                />
               </div>
 
               <div className="border-t border-[rgba(216,220,228,0.06)] pt-6">

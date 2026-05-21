@@ -1,8 +1,21 @@
+import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import HomeHero from "@/components/hero/home-hero";
 import ListingCard from "@/components/listing/listing-card";
 import { Link } from "@/i18n/navigation";
 import { ArrowRight } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Güleryüz Gayrimenkul — Eskişehir Emlak",
+  description:
+    "Eskişehir'de satılık ve kiralık ev, arsa, tarla, dükkan ilanları. 15 yılı aşkın deneyimle güvenilir gayrimenkul hizmeti.",
+  openGraph: {
+    title: "Güleryüz Gayrimenkul — Eskişehir",
+    description:
+      "Eskişehir'de satılık ve kiralık ev, arsa, tarla, dükkan ilanları.",
+    type: "website",
+  },
+};
 
 export default async function HomePage() {
   const featured = await db.listing.findMany({

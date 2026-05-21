@@ -13,7 +13,17 @@ const settingsSchema = z.object({
   contactPhone: z.string().min(1, "Telefon gerekli"),
   address: z.string().min(1, "Adres gerekli"),
   workingHours: z.string().min(1, "Çalışma saatleri gerekli"),
-  aboutTr: z.string().max(2000).optional().nullable(),
+  aboutTr: z.string().max(5000).optional().nullable(),
+  kvkkText: z.string().max(20000).optional().nullable(),
+  privacyText: z.string().max(20000).optional().nullable(),
+  termsText: z.string().max(20000).optional().nullable(),
+  contactLat: z.coerce.number().optional().nullable().or(z.literal("")),
+  contactLng: z.coerce.number().optional().nullable().or(z.literal("")),
+  officePhoto: z.string().optional().nullable().or(z.literal("")),
+  statYear: z.string().max(20).optional().nullable().or(z.literal("")),
+  statTransactions: z.string().max(20).optional().nullable().or(z.literal("")),
+  statCustomers: z.string().max(20).optional().nullable().or(z.literal("")),
+  statSatisfaction: z.string().max(20).optional().nullable().or(z.literal("")),
   // Sosyal linkler ayrı field'lar olarak gelir
   socialInstagram: z.string().url().optional().nullable().or(z.literal("")),
   socialFacebook: z.string().url().optional().nullable().or(z.literal("")),
@@ -33,7 +43,7 @@ export async function updateSiteSettings(raw: unknown): Promise<ActionResult> {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri" };
   }
 
-  const { socialInstagram, socialFacebook, socialYoutube, socialWhatsapp, socialX, ...rest } = parsed.data;
+  const { socialInstagram, socialFacebook, socialYoutube, socialWhatsapp, socialX, kvkkText, privacyText, termsText, contactLat, contactLng, officePhoto, statYear, statTransactions, statCustomers, statSatisfaction, ...rest } = parsed.data;
 
   const socialLinks = JSON.stringify({
     instagram: socialInstagram || null,
@@ -43,10 +53,23 @@ export async function updateSiteSettings(raw: unknown): Promise<ActionResult> {
     x: socialX || null,
   });
 
+  const locationData = {
+    contactLat: typeof contactLat === "number" ? contactLat : null,
+    contactLng: typeof contactLng === "number" ? contactLng : null,
+  };
+
+  const extraData = {
+    officePhoto: officePhoto || null,
+    statYear: statYear || null,
+    statTransactions: statTransactions || null,
+    statCustomers: statCustomers || null,
+    statSatisfaction: statSatisfaction || null,
+  };
+
   await db.siteSettings.upsert({
     where: { id: 1 },
-    update: { ...rest, socialLinks },
-    create: { id: 1, ...rest, socialLinks },
+    update: { ...rest, ...locationData, ...extraData, socialLinks, kvkkText: kvkkText || null, privacyText: privacyText || null, termsText: termsText || null },
+    create: { id: 1, ...rest, ...locationData, ...extraData, socialLinks, kvkkText: kvkkText || null, privacyText: privacyText || null, termsText: termsText || null },
   });
 
   await auditLog(session.user.id, "settings.update", "SiteSettings", "1");

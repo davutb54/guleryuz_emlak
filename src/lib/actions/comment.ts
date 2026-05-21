@@ -85,14 +85,24 @@ export async function toggleApproveComment(commentId: string): Promise<void> {
 
 export async function deleteComment(commentId: string): Promise<void> {
   const session = await auth();
-  if (
-    !session?.user?.role ||
-    !["ADMIN", "SUPER_ADMIN"].includes(session.user.role)
-  ) {
-    return;
-  }
+  if (!session?.user?.id) return;
+
+  const comment = await db.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, listing: { select: { slug: true } } },
+  });
+  if (!comment) return;
+
+  const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
+  const isOwner = comment.userId === session.user.id;
+  if (!isAdmin && !isOwner) return;
 
   await db.comment.delete({ where: { id: commentId } });
-  await auditLog(session.user.id, "comment.delete", "Comment", commentId);
-  revalidatePath("/");
+
+  if (isAdmin) {
+    await auditLog(session.user.id, "comment.delete", "Comment", commentId);
+  }
+
+  revalidatePath(`/ilan/${comment.listing.slug}`);
+  revalidatePath("/admin/yorumlar");
 }

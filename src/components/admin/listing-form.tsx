@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@/i18n/navigation";
@@ -16,8 +17,11 @@ import {
   FACADE_OPTIONS,
   DEED_STATUS_OPTIONS,
   ZONING_STATUS_OPTIONS,
+  getNeighborhoods,
 } from "@/lib/data/eskisehir";
 import { cn } from "@/lib/utils";
+
+const LocationPicker = dynamic(() => import("@/components/shared/location-picker"), { ssr: false });
 
 // ─── Tip: Düzenleme modunda geçilen ilan verisi ───────────────────────────────
 export interface ListingFormData {
@@ -217,6 +221,9 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
   const isShop = category === "SHOP";
   const showResidential = isHouse || isShop;
 
+  const selectedDistrict = watch("district");
+  const neighborhoodOptions = selectedDistrict ? getNeighborhoods(selectedDistrict) : [];
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onSubmit = async (data: any) => {
     setServerError(null);
@@ -235,7 +242,7 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
     if (listingId) {
       await saveListingImages(
         listingId,
-        images.map((img) => ({ url: img.url, isPrimary: img.isPrimary, order: img.order }))
+        images.map((img) => ({ url: img.url, type: img.type, isPrimary: img.isPrimary, order: img.order }))
       );
     }
 
@@ -425,11 +432,20 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
           </FormField>
 
           <FormField label="Mahalle" error={errors.neighborhood?.message}>
-            <Input
-              {...register("neighborhood")}
-              placeholder="Mahalle adı"
-              className={inputClass}
-            />
+            {neighborhoodOptions.length > 0 ? (
+              <select {...register("neighborhood")} className={selectClass}>
+                <option value="">Seçiniz</option>
+                {neighborhoodOptions.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                {...register("neighborhood")}
+                placeholder="Mahalle adı"
+                className={inputClass}
+              />
+            )}
           </FormField>
 
           <FormField label="Adres" error={errors.address?.message}>
@@ -438,7 +454,7 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
 
           <FormField label="Enlem" error={errors.latitude?.message}>
             <Input
-              {...register("latitude")}
+              {...register("latitude", { valueAsNumber: true })}
               type="number"
               step="0.000001"
               placeholder="39.7767"
@@ -448,13 +464,25 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
 
           <FormField label="Boylam" error={errors.longitude?.message}>
             <Input
-              {...register("longitude")}
+              {...register("longitude", { valueAsNumber: true })}
               type="number"
               step="0.000001"
               placeholder="30.5206"
               className={inputClass}
             />
           </FormField>
+        </div>
+
+        <div className="mt-4">
+          <p className="text-xs font-medium text-silver-400 mb-2">Haritadan Konum Seç</p>
+          <LocationPicker
+            lat={typeof watch("latitude") === "number" && !isNaN(watch("latitude") as number) ? (watch("latitude") as number) : null}
+            lng={typeof watch("longitude") === "number" && !isNaN(watch("longitude") as number) ? (watch("longitude") as number) : null}
+            onChange={(lat, lng) => {
+              setValue("latitude", lat);
+              setValue("longitude", lng);
+            }}
+          />
         </div>
       </div>
 

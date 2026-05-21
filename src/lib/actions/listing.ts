@@ -128,7 +128,7 @@ export async function deleteListing(id: string): Promise<ActionResult> {
 
 export async function saveListingImages(
   listingId: string,
-  images: { url: string; isPrimary: boolean; order: number }[]
+  images: { url: string; type?: string; isPrimary: boolean; order: number }[]
 ): Promise<ActionResult> {
   const user = await getAuthorizedUser();
   if (!user) return { success: false, error: "Yetkisiz erişim" };
@@ -141,6 +141,7 @@ export async function saveListingImages(
       data: images.map((img) => ({
         listingId,
         url: img.url,
+        type: img.type ?? "image",
         isPrimary: img.isPrimary,
         order: img.order,
         alt: null,

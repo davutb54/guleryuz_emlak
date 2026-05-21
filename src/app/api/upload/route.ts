@@ -7,8 +7,10 @@ import path from "path";
 import { writeFile, mkdir } from "fs/promises";
 import { randomBytes } from "crypto";
 
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
 const ALLOWED_ROLES = ["AGENT", "ADMIN", "SUPER_ADMIN"];
@@ -45,23 +47,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Dosya bulunamadı" }, { status: 400 });
   }
 
+  const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+
   // MIME type kontrolü
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  if (!isImage && !isVideo) {
     return NextResponse.json(
-      { error: "Sadece JPEG, PNG, WebP ve AVIF dosyaları kabul edilir" },
+      { error: "Desteklenmeyen dosya türü" },
       { status: 400 }
     );
   }
 
   // Boyut kontrolü
-  if (file.size > MAX_FILE_SIZE) {
+  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+  if (file.size > maxSize) {
     return NextResponse.json(
-      { error: "Dosya boyutu 10 MB'ı geçemez" },
+      { error: isVideo ? "Video boyutu 50 MB'ı geçemez" : "Dosya boyutu 10 MB'ı geçemez" },
       { status: 400 }
     );
   }
 
-  // Buffer oku
+  // Klasörü oluştur (yoksa)
+  await mkdir(UPLOAD_DIR, { recursive: true });
+
+  const uniqueName = randomBytes(12).toString("hex");
+
+  // Video dosyası — doğrudan kaydet
+  if (isVideo) {
+    const ext = file.type === "video/webm" ? "webm" : "mp4";
+    const fileName = `${uniqueName}.${ext}`;
+    const filePath = path.join(UPLOAD_DIR, fileName);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(filePath, buffer);
+    return NextResponse.json({ url: `/uploads/${fileName}`, thumbnail: null, type: "video" });
+  }
+
+  // Buffer oku (resim)
   const buffer = Buffer.from(await file.arrayBuffer());
 
   // Sharp ile metadata kontrol — gerçek görüntü mü?
@@ -75,22 +96,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Görüntü işlenemedi" }, { status: 400 });
   }
 
-  // Benzersiz dosya adı
-  const uniqueName = randomBytes(12).toString("hex");
   const fileName = `${uniqueName}.webp`;
   const filePath = path.join(UPLOAD_DIR, fileName);
   const publicUrl = `/uploads/${fileName}`;
 
-  // Klasörü oluştur (yoksa)
-  await mkdir(UPLOAD_DIR, { recursive: true });
-
   // Sharp: WebP'e dönüştür, boyutlandır, EXIF temizle
   await sharp(buffer)
-    .rotate()                           // EXIF orientation'a göre döndür
-    .resize(1920, 1080, {
-      fit: "inside",
-      withoutEnlargement: true,
-    })
+    .rotate()
+    .resize(1920, 1080, { fit: "inside", withoutEnlargement: true })
     .webp({ quality: 82 })
     .toFile(filePath);
 
@@ -141,6 +154,7 @@ export async function POST(req: NextRequest) {
     thumbnail: `/uploads/${thumbName}`,
     width: metadata.width,
     height: metadata.height,
+    type: "image",
   });
 }
 

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { deleteComment, toggleApproveComment } from "@/lib/actions/comment";
 import { Link } from "@/i18n/navigation";
-import { Star, Trash2, MessageSquare, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Star, Trash2, MessageSquare, Eye, EyeOff, ExternalLink, ChevronDown } from "lucide-react";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -18,33 +18,57 @@ export default async function AdminYorumlarPage({ params, searchParams }: Props)
     redirect(`/${locale}/giris`);
   }
 
-  const where = gorunum === "gizli" ? { approved: false } : gorunum === "yayinda" ? { approved: true } : {};
+  const where =
+    gorunum === "gizli"
+      ? { approved: false }
+      : gorunum === "yayinda"
+      ? { approved: true }
+      : {};
 
   const comments = await db.comment.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take: 500,
     include: {
       user: { select: { name: true, email: true } },
-      listing: { select: { titleTr: true, slug: true } },
+      listing: { select: { id: true, titleTr: true, slug: true } },
     },
   });
 
+  // İlana göre grupla
+  const grouped = new Map<
+    string,
+    { listingId: string; titleTr: string; slug: string; items: typeof comments }
+  >();
+  for (const c of comments) {
+    const key = c.listing.id;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        listingId: key,
+        titleTr: c.listing.titleTr,
+        slug: c.listing.slug,
+        items: [],
+      });
+    }
+    grouped.get(key)!.items.push(c);
+  }
+  const groups = Array.from(grouped.values());
+
   const tabs = [
-    { value: "hepsi",   label: "Tümü" },
+    { value: "hepsi", label: "Tümü" },
     { value: "yayinda", label: "Yayında" },
-    { value: "gizli",   label: "Gizli" },
+    { value: "gizli", label: "Gizli" },
   ];
 
   return (
     <div className="max-w-4xl">
       <div className="mb-6">
         <h1 className="font-display text-display-sm text-cream-50 mb-1">Yorumlar</h1>
-        <p className="text-silver-500 text-sm">{comments.length} yorum</p>
+        <p className="text-silver-500 text-sm">{comments.length} yorum · {groups.length} ilan</p>
       </div>
 
       {/* Filtre sekmeleri */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-6">
         {tabs.map((tab) => (
           <Link
             key={tab.value}
@@ -66,72 +90,103 @@ export default async function AdminYorumlarPage({ params, searchParams }: Props)
           <p className="text-silver-500 text-sm">Bu görünümde yorum yok.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {comments.map((comment) => (
+        <div className="space-y-4">
+          {groups.map((group) => (
             <div
-              key={comment.id}
-              className={`bg-navy-850 border rounded-xl p-5 transition-colors ${
-                comment.approved ? "border-[var(--border-subtle)]" : "border-red-500/20 opacity-70"
-              }`}
+              key={group.listingId}
+              className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl overflow-hidden"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1 flex-wrap">
-                    <span className="text-cream-100 font-medium text-sm">{comment.user.name}</span>
-                    <span className="text-silver-600 text-xs">{comment.user.email}</span>
-                    {comment.rating && (
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} size={12} strokeWidth={1.5}
-                            className={s <= comment.rating! ? "fill-gold-500 text-gold-500" : "text-navy-600"} />
-                        ))}
-                      </div>
-                    )}
-                    {!comment.approved && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-semibold uppercase">
-                        Gizli
-                      </span>
-                    )}
-                    <span className="text-silver-600 text-xs ml-auto">
-                      {new Date(comment.createdAt).toLocaleDateString("tr-TR")}
-                    </span>
-                  </div>
-                  <p className="text-cream-200 text-sm mb-2">{comment.content}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-silver-600">İlan:</span>
-                    <Link
-                      href={`/ilan/${comment.listing.slug}`}
-                      target="_blank"
-                      className="flex items-center gap-1 text-xs text-silver-400 hover:text-gold-400 transition-colors"
-                    >
-                      {comment.listing.titleTr}
-                      <ExternalLink size={10} strokeWidth={1.5} />
-                    </Link>
-                  </div>
+              {/* Grup başlığı — ilan */}
+              <div className="flex items-center justify-between gap-3 px-5 py-3 bg-navy-800 border-b border-[var(--border-divider)]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MessageSquare size={14} className="text-gold-500 shrink-0" />
+                  <span className="text-cream-100 font-medium text-sm truncate">
+                    {group.titleTr}
+                  </span>
+                  <span className="text-xs text-silver-500 shrink-0">
+                    ({group.items.length} yorum)
+                  </span>
                 </div>
+                <Link
+                  href={`/ilan/${group.slug}`}
+                  target="_blank"
+                  className="flex items-center gap-1 text-xs text-silver-400 hover:text-gold-400 transition-colors shrink-0"
+                >
+                  İlanı Gör <ExternalLink size={10} strokeWidth={1.5} />
+                </Link>
+              </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Onayla / Gizle toggle */}
-                  <form action={toggleApproveComment.bind(null, comment.id)}>
-                    <button type="submit"
-                      title={comment.approved ? "Gizle" : "Yayınla"}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                        comment.approved
-                          ? "bg-silver-500/10 text-silver-400 border-silver-500/20 hover:bg-silver-500/20"
-                          : "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20"
-                      }`}>
-                      {comment.approved ? <EyeOff size={13} /> : <Eye size={13} />}
-                      {comment.approved ? "Gizle" : "Yayınla"}
-                    </button>
-                  </form>
-                  {/* Sil */}
-                  <form action={deleteComment.bind(null, comment.id)}>
-                    <button type="submit"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium hover:bg-red-500/20 transition-colors">
-                      <Trash2 size={13} /> Sil
-                    </button>
-                  </form>
-                </div>
+              {/* Yorumlar */}
+              <div className="divide-y divide-[var(--border-divider)]">
+                {group.items.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className={`px-5 py-4 transition-colors ${
+                      !comment.approved ? "opacity-60" : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1 flex-wrap">
+                          <span className="text-cream-100 font-medium text-sm">
+                            {comment.user.name}
+                          </span>
+                          <span className="text-silver-600 text-xs">{comment.user.email}</span>
+                          {comment.rating && (
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  size={11}
+                                  strokeWidth={1.5}
+                                  className={
+                                    s <= comment.rating!
+                                      ? "fill-gold-500 text-gold-500"
+                                      : "text-navy-600"
+                                  }
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {!comment.approved && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-semibold uppercase">
+                              Gizli
+                            </span>
+                          )}
+                          <span className="text-silver-600 text-xs ml-auto">
+                            {new Date(comment.createdAt).toLocaleDateString("tr-TR")}
+                          </span>
+                        </div>
+                        <p className="text-cream-200 text-sm">{comment.content}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <form action={toggleApproveComment.bind(null, comment.id)}>
+                          <button
+                            type="submit"
+                            title={comment.approved ? "Gizle" : "Yayınla"}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                              comment.approved
+                                ? "bg-silver-500/10 text-silver-400 border-silver-500/20 hover:bg-silver-500/20"
+                                : "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20"
+                            }`}
+                          >
+                            {comment.approved ? <EyeOff size={12} /> : <Eye size={12} />}
+                            {comment.approved ? "Gizle" : "Yayınla"}
+                          </button>
+                        </form>
+                        <form action={deleteComment.bind(null, comment.id)}>
+                          <button
+                            type="submit"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium hover:bg-red-500/20 transition-colors"
+                          >
+                            <Trash2 size={12} /> Sil
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}

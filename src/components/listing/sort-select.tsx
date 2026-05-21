@@ -8,8 +8,8 @@ interface SortSelectProps {
 export default function SortSelect({ defaultValue, hiddenFields }: SortSelectProps) {
   return (
     <form method="GET" action="/ilanlar">
-      {hiddenFields.map((f) => (
-        <input key={f.name} type="hidden" name={f.name} value={f.value} />
+      {hiddenFields.map((f, i) => (
+        <input key={`${f.name}-${i}`} type="hidden" name={f.name} value={f.value} />
       ))}
       <select
         name="siralama"

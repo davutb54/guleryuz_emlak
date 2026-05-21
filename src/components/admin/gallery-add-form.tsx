@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { createGalleryItem } from "@/lib/actions/gallery";
-import { Upload, Link as LinkIcon, Plus } from "lucide-react";
+import { Upload, Link as LinkIcon, Plus, Video } from "lucide-react";
 
 export default function GalleryAddForm() {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<"image" | "video">("image");
   const [url, setUrl] = useState("");
+  const [videoMode, setVideoMode] = useState<"file" | "url">("file");
   const [titleTr, setTitleTr] = useState("");
   const [category, setCategory] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -25,10 +26,17 @@ export default function GalleryAddForm() {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (data.url) setUrl(data.url);
+      else alert(data.error ?? "Yükleme başarısız");
     } finally {
       setUploading(false);
       e.target.value = "";
     }
+  }
+
+  function handleTypeChange(v: "image" | "video") {
+    setType(v);
+    setUrl("");
+    setVideoMode("file");
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -66,10 +74,10 @@ export default function GalleryAddForm() {
         {/* Tür */}
         <div>
           <label className="text-xs text-silver-400 uppercase tracking-wider mb-1.5 block">Tür</label>
-          <select value={type} onChange={(e) => setType(e.target.value as "image" | "video")}
+          <select value={type} onChange={(e) => handleTypeChange(e.target.value as "image" | "video")}
             className="w-full h-10 px-3 bg-navy-900 border border-[var(--border-subtle)] rounded-lg text-sm text-cream-100 [&>option]:bg-navy-900">
             <option value="image">Fotoğraf</option>
-            <option value="video">Video (URL)</option>
+            <option value="video">Video</option>
           </select>
         </div>
 
@@ -86,11 +94,12 @@ export default function GalleryAddForm() {
           </select>
         </div>
 
-        {/* URL / Upload */}
+        {/* Medya */}
         <div className="sm:col-span-2">
           <label className="text-xs text-silver-400 uppercase tracking-wider mb-1.5 block">
-            {type === "image" ? "Fotoğraf" : "Video URL"}
+            {type === "image" ? "Fotoğraf" : "Video"}
           </label>
+
           {type === "image" ? (
             <div className="flex gap-2">
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="URL veya aşağıdan yükle"
@@ -102,12 +111,49 @@ export default function GalleryAddForm() {
               </label>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <LinkIcon size={16} strokeWidth={1.5} className="text-silver-500 shrink-0" />
-              <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="YouTube veya Vimeo URL"
-                className="flex-1 h-10 px-3 bg-navy-900 border border-[var(--border-subtle)] rounded-lg text-sm text-cream-100 placeholder-silver-600 focus:outline-none focus:border-gold-500/60" />
+            <div className="space-y-3">
+              {/* Yükleme modu seçimi */}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setVideoMode("file"); setUrl(""); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${videoMode === "file" ? "bg-gold-500/15 border-gold-500/30 text-gold-400" : "bg-navy-900 border-[var(--border-subtle)] text-silver-400 hover:text-cream-100"}`}>
+                  <Upload size={12} strokeWidth={1.5} /> Dosyadan Yükle
+                </button>
+                <button type="button" onClick={() => { setVideoMode("url"); setUrl(""); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${videoMode === "url" ? "bg-gold-500/15 border-gold-500/30 text-gold-400" : "bg-navy-900 border-[var(--border-subtle)] text-silver-400 hover:text-cream-100"}`}>
+                  <LinkIcon size={12} strokeWidth={1.5} /> YouTube / Vimeo URL
+                </button>
+              </div>
+
+              {videoMode === "file" ? (
+                <div>
+                  <label className={`flex flex-col items-center justify-center gap-2 h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? "border-gold-500/40 bg-gold-500/5" : "border-[rgba(212,167,68,0.2)] hover:border-gold-500/40 hover:bg-white/[0.02]"}`}>
+                    {uploading ? (
+                      <p className="text-sm text-gold-400">Yükleniyor...</p>
+                    ) : url ? (
+                      <>
+                        <Video size={20} strokeWidth={1.5} className="text-gold-500" />
+                        <p className="text-xs text-silver-400 truncate max-w-[280px] px-4">{url.split("/").pop()}</p>
+                      </>
+                    ) : (
+                      <>
+                        <Video size={20} strokeWidth={1.5} className="text-silver-500" />
+                        <p className="text-sm text-silver-400">Video dosyası seçin (MP4, WebM · Maks 50 MB)</p>
+                      </>
+                    )}
+                    <input type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden"
+                      onChange={handleFileUpload} disabled={uploading} />
+                  </label>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <LinkIcon size={16} strokeWidth={1.5} className="text-silver-500 shrink-0" />
+                  <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="YouTube veya Vimeo URL"
+                    className="flex-1 h-10 px-3 bg-navy-900 border border-[var(--border-subtle)] rounded-lg text-sm text-cream-100 placeholder-silver-600 focus:outline-none focus:border-gold-500/60" />
+                </div>
+              )}
             </div>
           )}
+
           {url && type === "image" && (
             <img src={url} alt="" className="mt-2 h-20 w-auto rounded-lg object-cover border border-[var(--border-subtle)]" />
           )}

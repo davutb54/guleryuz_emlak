@@ -188,5 +188,49 @@
   50%      { opacity: 1; }
 }
 
+/* Radix Dialog overlay */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Radix Dialog bottom sheet */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
 .animate-fade-up { animation: fadeUp 600ms cubic-bezier(0.4, 0, 0.2, 1); }
 .animate-shimmer { animation: shimmer 2s ease-in-out infinite; }
+
+/* ===== Custom scrollbar — tasarım sistemine uygun ===== */
+.scrollbar-gold {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 167, 68, 0.28) #0E1D33;
+  overflow-x: hidden;
+}
+.scrollbar-gold::-webkit-scrollbar {
+  width: 3px;
+  height: 0px;
+}
+.scrollbar-gold::-webkit-scrollbar-track {
+  background: #0E1D33;
+}
+.scrollbar-gold::-webkit-scrollbar-thumb {
+  background: rgba(212, 167, 68, 0.28);
+  border-radius: 99px;
+}
+.scrollbar-gold::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 167, 68, 0.6);
+}
+.scrollbar-gold::-webkit-scrollbar-corner {
+  background: #0E1D33;
+}
