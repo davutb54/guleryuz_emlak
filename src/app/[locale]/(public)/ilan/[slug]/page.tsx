@@ -238,7 +238,7 @@ export default async function IlanDetayPage({
           <div className="flex-1 min-w-0">
             {/* Başlık kutusu */}
             <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6 mb-6">
-              <h1 className="font-display text-display-sm text-cream-50 mb-3">
+              <h1 className="font-display text-display-sm text-cream-50 mb-3 break-words">
                 {listing.titleTr}
               </h1>
 
@@ -299,7 +299,7 @@ export default async function IlanDetayPage({
               <h2 className="text-sm font-semibold text-silver-300 uppercase tracking-wider mb-4">
                 Açıklama
               </h2>
-              <p className="text-cream-200 text-[15px] leading-relaxed whitespace-pre-line">
+              <p className="text-cream-200 text-[15px] leading-relaxed whitespace-pre-line break-words">
                 {listing.descriptionTr}
               </p>
             </div>

@@ -25,7 +25,6 @@ export const metadata: Metadata = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: "Kurucu & Genel Müdür",
   ADMIN: "Yönetici",
   AGENT: "Emlak Danışmanı",
 };
@@ -41,10 +40,11 @@ export default async function HakkimizdaPage() {
   const [settings, teamMembers] = await Promise.all([
     db.siteSettings.findFirst(),
     db.user.findMany({
-      where: { role: { in: ["SUPER_ADMIN", "ADMIN", "AGENT"] } },
+      where: { role: { in: ["ADMIN", "AGENT"] } },
       select: {
         id: true,
         name: true,
+        title: true,
         role: true,
         email: true,
         phone: true,
@@ -290,7 +290,7 @@ export default async function HakkimizdaPage() {
                     {member.name}
                   </h3>
                   <p className="font-sans text-xs text-gold-500 tracking-wider uppercase mb-4">
-                    {ROLE_LABELS[member.role] ?? "Uzman"}
+                    {member.title || ROLE_LABELS[member.role] || "Uzman"}
                   </p>
 
                   {/* İletişim ikonları */}

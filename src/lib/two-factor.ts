@@ -7,6 +7,9 @@ const COOKIE_SETUP = "guleryuz-2fa-setup";
 const COOKIE_VERIFIED = "guleryuz-2fa-verified";
 const VERIFIED_TTL = 8 * 60 * 60; // 8 hours
 
+// Cookie Secure flag'i sadece HTTPS'te aktif — HTTP production'da false olmalı
+const useSecureCookies = process.env.NEXT_PUBLIC_BASE_URL?.startsWith("https://") ?? false;
+
 function hmac(data: string): string {
   return crypto
     .createHmac("sha256", process.env.AUTH_SECRET ?? "fallback-dev-secret")
@@ -55,7 +58,7 @@ export async function setSetupCookie(userId: string, secretBase32: string) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_SETUP, `${payload}|${sig}`, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: useSecureCookies,
     sameSite: "lax",
     maxAge: 10 * 60,
     path: "/",
@@ -89,7 +92,7 @@ export async function set2FAVerifiedCookie(userId: string) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_VERIFIED, `${payload}|${sig}`, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: useSecureCookies,
     sameSite: "lax",
     maxAge: VERIFIED_TTL,
     path: "/",

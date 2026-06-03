@@ -16,6 +16,7 @@ import SearchAlertForm from "@/components/listing/search-alert-form";
 import DeleteSearchAlertButton from "@/components/listing/delete-search-alert-button";
 import AvatarUpload from "@/components/shared/avatar-upload";
 import ProfileEditForm from "@/components/shared/profile-edit-form";
+import PasswordChangeForm from "@/components/shared/password-change-form";
 
 function formatPrice(price: { toNumber(): number }, currency: string) {
   return new Intl.NumberFormat("tr-TR", {
@@ -41,7 +42,7 @@ export default async function ProfilPage({
   const [user, favorites, comments, searchAlerts] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
-      select: { name: true, email: true, phone: true, avatar: true, createdAt: true },
+      select: { name: true, email: true, phone: true, avatar: true, createdAt: true, passwordHash: true },
     }),
     db.favorite.findMany({
       where: { userId },
@@ -256,6 +257,22 @@ export default async function ProfilPage({
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* ─── Şifre Değiştir ────────────────────────────────────────────── */}
+          <div>
+            {user.passwordHash ? (
+              <PasswordChangeForm />
+            ) : (
+              <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6">
+                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-silver-300 mb-3">
+                  Şifre Değiştir
+                </h2>
+                <p className="text-silver-500 text-sm">
+                  Bu hesap Google ile bağlı. Şifre değiştirme uygulanmaz.
+                </p>
               </div>
             )}
           </div>

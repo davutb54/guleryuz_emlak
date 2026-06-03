@@ -70,7 +70,7 @@ export default function CommentList({
                     <DeleteCommentButton commentId={comment.id} />
                   )}
                 </div>
-                <p className="text-cream-200 text-sm leading-relaxed">{comment.content}</p>
+                <p className="text-cream-200 text-sm leading-relaxed break-words">{comment.content}</p>
               </div>
             </div>
           </div>

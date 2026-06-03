@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { auditLog } from "@/lib/audit";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { z } from "zod";
 
 type ActionResult = { success: true } | { success: false; error: string };
@@ -117,6 +118,44 @@ export async function updateSelfProfile(raw: unknown): Promise<ActionResult> {
 
   revalidatePath("/profil");
   revalidatePath("/hakkimizda");
+  return { success: true };
+}
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Mevcut şifre gerekli"),
+  newPassword: z.string().min(8, "Yeni şifre en az 8 karakter olmalı"),
+});
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Giriş yapmanız gerekiyor" };
+
+  const parsed = changePasswordSchema.safeParse({ currentPassword, newPassword });
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri" };
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { passwordHash: true },
+  });
+  if (!user) return { success: false, error: "Kullanıcı bulunamadı" };
+
+  if (!user.passwordHash) {
+    return { success: false, error: "Bu hesap sosyal girişle oluşturulmuş, şifre değiştirilemez" };
+  }
+
+  const isValid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!isValid) return { success: false, error: "Mevcut şifre yanlış" };
+
+  const newHash = await hashPassword(newPassword);
+  await db.user.update({
+    where: { id: session.user.id },
+    data: { passwordHash: newHash },
+  });
+
+  await auditLog(session.user.id, "password.change", "User", session.user.id);
   return { success: true };
 }
 
