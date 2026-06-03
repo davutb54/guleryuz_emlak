@@ -35,7 +35,7 @@ interface HeaderProps {
 
 function Logo() {
   return (
-    <Link href="/" className="shrink-0 flex items-center">
+    <Link href="/" className="shrink-0 flex items-center gap-3">
       <Image
         src="/brand/logo.svg"
         alt="Güleryüz Gayrimenkul"
@@ -44,6 +44,10 @@ function Logo() {
         className="h-16 w-16 object-contain"
         priority
       />
+      <div className="flex flex-col leading-tight">
+        <span className="text-cream-100 font-semibold text-sm tracking-wide">Güleryüz Emlak</span>
+        <span className="text-gold-500 font-medium text-xs tracking-widest uppercase">Gayrimenkul</span>
+      </div>
     </Link>
   );
 }

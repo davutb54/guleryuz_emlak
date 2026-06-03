@@ -13,7 +13,10 @@ const loginSchema = z.object({
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
-    Google,
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     Credentials({
       credentials: {
         email: { label: "E-posta", type: "email" },
@@ -68,16 +71,32 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
-        const dbUser = await db.user.findUnique({
+        await db.user.upsert({
           where: { email: user.email! },
+          update: {},
+          create: {
+            email: user.email!,
+            name: user.name ?? user.email!.split("@")[0],
+            avatar: user.image ?? null,
+            role: "USER",
+          },
         });
-        return !!dbUser;
+        return true;
       }
       return true;
     },
 
-    jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      if (account?.provider === "google" && token.email) {
+        const dbUser = await db.user.findUnique({
+          where: { email: token.email },
+          select: { id: true, role: true },
+        });
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+        }
+      } else if (user) {
         token.id = user.id!;
         token.role = user.role;
       }
