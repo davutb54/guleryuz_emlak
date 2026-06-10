@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { MapPin, Phone, Mail, Clock } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, MessageCircle } from "lucide-react";
 import ContactForm from "@/components/contact/contact-form";
 import OfficeMapClient from "@/components/contact/office-map-client";
+import type { ContactPartner } from "@/components/admin/settings-form";
 
 export const metadata: Metadata = {
   title: "İletişim | Güleryüz Gayrimenkul",
@@ -21,11 +22,15 @@ export default async function IletisimPage() {
 
   let socialLinks: Record<string, string> = {};
   if (settings?.socialLinks) {
-    try {
-      socialLinks = JSON.parse(settings.socialLinks);
-    } catch {
-      // geçersiz JSON — boş bırak
-    }
+    try { socialLinks = JSON.parse(settings.socialLinks); } catch {}
+  }
+
+  let partners: ContactPartner[] = [];
+  if (settings?.contactPhones) {
+    try { partners = JSON.parse(settings.contactPhones); } catch {}
+  }
+  if (partners.length === 0 && settings?.contactPhone) {
+    partners = [{ name: "", phone: settings.contactPhone, whatsapp: "" }];
   }
 
   return (
@@ -88,21 +93,43 @@ export default async function IletisimPage() {
                   </div>
                 )}
 
-                {settings?.contactPhone && (
+                {partners.length > 0 && (
                   <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-navy-800 border border-navy-700 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-navy-800 border border-navy-700 flex items-center justify-center shrink-0 mt-0.5">
                       <Phone className="w-4 h-4 text-gold-500" />
                     </div>
-                    <div>
-                      <p className="text-xs font-sans text-silver-500 uppercase tracking-wider mb-1">
+                    <div className="flex-1">
+                      <p className="text-xs font-sans text-silver-500 uppercase tracking-wider mb-3">
                         Telefon
                       </p>
-                      <a
-                        href={`tel:${settings.contactPhone}`}
-                        className="text-cream-200 font-sans text-sm hover:text-gold-400 transition-colors"
-                      >
-                        {settings.contactPhone}
-                      </a>
+                      <div className="space-y-3">
+                        {partners.map((p, i) => (
+                          <div key={i} className="flex flex-col gap-1.5">
+                            {p.name && (
+                              <p className="text-xs text-silver-500 font-medium">{p.name}</p>
+                            )}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <a
+                                href={`tel:${p.phone}`}
+                                className="text-cream-200 font-sans text-sm hover:text-gold-400 transition-colors"
+                              >
+                                {p.phone}
+                              </a>
+                              {p.whatsapp && (
+                                <a
+                                  href={`https://wa.me/${p.whatsapp.replace(/\D/g, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs hover:bg-green-500/20 transition-colors"
+                                >
+                                  <MessageCircle className="w-3 h-3" />
+                                  WhatsApp
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -154,7 +181,7 @@ export default async function IletisimPage() {
                       url ? (
                         <a
                           key={platform}
-                          href={url}
+                          href={url.startsWith("http") ? url : platform === "whatsapp" ? `https://wa.me/${url.replace(/\s/g, "")}` : url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-4 py-2 bg-navy-800 border border-navy-700 hover:border-gold-500/40 text-silver-400 hover:text-gold-400 rounded-full text-xs font-sans transition-colors capitalize"
@@ -185,12 +212,30 @@ export default async function IletisimPage() {
       {/* Harita */}
       <section className="pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-96 rounded-2xl overflow-hidden border border-navy-700">
-            <OfficeMapClient
-              address={settings?.address}
-              lat={settings?.contactLat ?? undefined}
-              lng={settings?.contactLng ?? undefined}
-            />
+          <div className="bg-navy-800 border border-navy-700 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-silver-300 uppercase tracking-wider">
+                Konum
+              </h2>
+              {settings?.contactLat && settings?.contactLng && (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${settings.contactLat},${settings.contactLng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gold-500/35 text-gold-500 text-xs font-medium hover:bg-gold-500/8 transition-colors"
+                >
+                  <MapPin size={12} strokeWidth={1.5} />
+                  Yol Tarifi Al
+                </a>
+              )}
+            </div>
+            <div className="h-96 rounded-xl overflow-hidden border border-navy-700">
+              <OfficeMapClient
+                address={settings?.address}
+                lat={settings?.contactLat ?? undefined}
+                lng={settings?.contactLng ?? undefined}
+              />
+            </div>
           </div>
         </div>
       </section>

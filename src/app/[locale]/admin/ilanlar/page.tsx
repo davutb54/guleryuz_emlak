@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import ListingTable from "@/components/admin/listing-bulk-actions";
@@ -34,6 +35,9 @@ interface Props {
 }
 
 export default async function AdminIlanlarPage({ searchParams }: Props) {
+  const session = await auth();
+  const isAgent = session?.user?.role === "AGENT";
+
   const { q = "", status = "", kategori = "", sayfa = "1" } = await searchParams;
   const page = Math.max(1, parseInt(sayfa, 10) || 1);
   const skip = (page - 1) * PAGE_SIZE;
@@ -45,6 +49,7 @@ export default async function AdminIlanlarPage({ searchParams }: Props) {
   });
 
   const where: Record<string, unknown> = {};
+  if (isAgent) where.agentId = session!.user.id;
   if (status) where.status = status;
   if (kategori) where.category = kategori;
   if (q) {

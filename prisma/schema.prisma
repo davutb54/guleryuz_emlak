@@ -122,6 +122,7 @@ model Listing {
   storefrontWidth Float?
 
   virtualTourUrl String?
+  sahibindenUrl  String?
   featured       Boolean  @default(false)
   verified       Boolean  @default(false)
   viewCount      Int      @default(0)
@@ -261,10 +262,78 @@ model AuditLog {
   @@index([createdAt])
 }
 
+model ListingSubmission {
+  id          String   @id @default(cuid())
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+
+  // İletişim bilgileri (zorunlu)
+  contactName  String
+  contactPhone String
+  contactEmail String
+
+  // İlan temel bilgileri
+  category    String
+  type        String
+  titleTr     String
+  descriptionTr String?
+  price       Decimal
+  currency    String  @default("TRY")
+
+  // Konum
+  city         String  @default("Eskişehir")
+  district     String
+  neighborhood String?
+  address      String?
+
+  // Özellikler
+  area        Float
+  netArea     Float?
+  rooms       String?
+  bathrooms   Int?
+  buildingAge Int?
+  floor       Int?
+  totalFloors Int?
+  heating     String?
+  furnished   Boolean?
+  hasBalcony  Boolean?
+  hasElevator Boolean?
+  hasParking  Boolean?
+  hasSecurity Boolean?
+  hasPool     Boolean?
+  inSite      Boolean?
+  facade      String?
+  creditEligible Boolean?
+  deedStatus  String?
+
+  // Arsa/tarla
+  zoningStatus String?
+  islandNumber String?
+  parcelNumber String?
+
+  // Giriş yapmış kullanıcı bağlantısı (opsiyonel)
+  userId       String?
+
+  sahibindenUrl String?
+
+  // Admin
+  adminNote    String?
+  reviewedAt   DateTime?
+  reviewedById String?
+  listingId    String?   // Onaylandığında oluşturulan ilan ID'si
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+}
+
 model SiteSettings {
   id               Int      @id @default(1)
   contactEmail     String
   contactPhone     String
+  contactPhones    String?
   address          String
   workingHours     String
   socialLinks      String
@@ -280,5 +349,21 @@ model SiteSettings {
   statTransactions String?
   statCustomers    String?
   statSatisfaction String?
+
+  homeHeroOverlineTr       String?
+  homeHeroOverlineEn       String?
+  homeHeroHeadlineTr       String?
+  homeHeroHeadlineEn       String?
+  homeHeroHeadlineAccentTr String?
+  homeHeroHeadlineAccentEn String?
+  homeHeroSubTr            String?
+  homeHeroSubEn            String?
+  homeFeaturedOverlineTr   String?
+  homeFeaturedOverlineEn   String?
+  homeFeaturedTitleTr      String?
+  homeFeaturedTitleEn      String?
+  
+  homeVideoUrl             String?
+
   updatedAt        DateTime @updatedAt
 }

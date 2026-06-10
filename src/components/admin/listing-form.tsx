@@ -67,6 +67,7 @@ export interface ListingFormData {
   ceilingHeight?: number | null;
   storefrontWidth?: number | null;
   virtualTourUrl?: string | null;
+  sahibindenUrl?: string | null;
   featured: boolean;
 }
 
@@ -205,6 +206,7 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
           ceilingHeight: listing.ceilingHeight ?? undefined,
           storefrontWidth: listing.storefrontWidth ?? undefined,
           virtualTourUrl: listing.virtualTourUrl ?? "",
+          sahibindenUrl: listing.sahibindenUrl ?? "",
           featured: listing.featured,
         }
       : {
@@ -721,13 +723,23 @@ export default function ListingForm({ listing, initialImages }: ListingFormProps
       <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-6">
         <SectionTitle>Ek Bilgiler</SectionTitle>
 
-        <FormField label="Sanal Tur URL" error={errors.virtualTourUrl?.message}>
-          <Input
-            {...register("virtualTourUrl")}
-            placeholder="https://..."
-            className={inputClass}
-          />
-        </FormField>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Sanal Tur URL" error={errors.virtualTourUrl?.message}>
+            <Input
+              {...register("virtualTourUrl")}
+              placeholder="https://..."
+              className={inputClass}
+            />
+          </FormField>
+
+          <FormField label="Sahibinden İlan URL" error={errors.sahibindenUrl?.message}>
+            <Input
+              {...register("sahibindenUrl")}
+              placeholder="https://www.sahibinden.com/ilan/..."
+              className={inputClass}
+            />
+          </FormField>
+        </div>
       </div>
 
       {/* ─── Fotoğraflar ────────────────────────────────────────────────────── */}

@@ -10,6 +10,7 @@ interface Props {
   twoFAEnabled: boolean;
   locale: string;
   user: { name?: string | null; email?: string | null; role?: string };
+  pendingSubmissions?: number;
 }
 
 function Spinner({ to }: { to: string }) {
@@ -24,7 +25,7 @@ function Spinner({ to }: { to: string }) {
   );
 }
 
-export default function TwoFAGuard({ children, isVerified, twoFAEnabled, locale, user }: Props) {
+export default function TwoFAGuard({ children, isVerified, twoFAEnabled, locale, user, pendingSubmissions }: Props) {
   const pathname = usePathname();
   const isOn2FAPage =
     pathname.includes("/2fa-dogrula") || pathname.includes("/2fa-kurulum");
@@ -46,7 +47,7 @@ export default function TwoFAGuard({ children, isVerified, twoFAEnabled, locale,
 
   // Her şey tamam — AdminShell ile render et
   return (
-    <AdminShell locale={locale} user={user}>
+    <AdminShell locale={locale} user={user} pendingSubmissions={pendingSubmissions}>
       {children}
     </AdminShell>
   );

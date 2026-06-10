@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { ListFilter, Users, MessageSquare, TrendingUp, Eye, Mail } from "lucide-react";
 import DashboardCharts from "@/components/admin/dashboard-charts";
@@ -43,6 +44,10 @@ function buildDailyData(listings: Date[], users: Date[]) {
 
 export default async function AdminDashboardPage() {
   const session = await auth();
+
+  if (session?.user?.role === "AGENT") {
+    redirect("/admin/ilanlar");
+  }
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

@@ -43,6 +43,12 @@ const SOCIAL_ICON_MAP: Record<string, { icon: ({ size }: { size: number }) => Re
   whatsapp:  { icon: WhatsAppIcon,  label: "WhatsApp" },
 };
 
+function buildSocialUrl(platform: string, url: string): string {
+  if (url.startsWith("http")) return url;
+  if (platform === "whatsapp") return `https://wa.me/${url.replace(/\s/g, "")}`;
+  return url;
+}
+
 export default async function Footer() {
   const t = await getTranslations("footer");
   const nav = await getTranslations("nav");
@@ -61,6 +67,7 @@ export default async function Footer() {
   const quickLinks = [
     { href: "/ilanlar", label: t("saleListing") },
     { href: "/ilanlar?type=RENT", label: t("rentListing") },
+    { href: "/ilan-ekle", label: t("addListing") },
     { href: "/hakkimizda", label: nav("about") },
     { href: "/galeri", label: nav("gallery") },
     { href: "/iletisim", label: nav("contact") },
@@ -73,11 +80,13 @@ export default async function Footer() {
     t("consultation"),
   ];
 
+  const primaryPhone = settings?.contactPhone || "+90 (222) 000 00 00";
+  const email = settings?.contactEmail || "info@guleryuzgayrimenkul.com";
   const contactItems = [
-    { icon: MapPin, text: settings?.address || "Eskişehir, Türkiye" },
-    { icon: Phone, text: settings?.contactPhone || "+90 (222) 000 00 00" },
-    { icon: Mail, text: settings?.contactEmail || "info@guleryuzgayrimenkul.com" },
-    { icon: Clock, text: settings?.workingHours || "Pzt–Cts  09:00 – 18:00" },
+    { icon: MapPin, text: settings?.address || "Eskişehir, Türkiye", href: undefined },
+    { icon: Phone, text: primaryPhone, href: `tel:${primaryPhone.replace(/\s/g, "")}` },
+    { icon: Mail, text: email, href: `mailto:${email}` },
+    { icon: Clock, text: settings?.workingHours || "Pzt–Cts  09:00 – 18:00", href: undefined },
   ];
 
   const legalLinks = [
@@ -113,7 +122,7 @@ export default async function Footer() {
                   return (
                     <a
                       key={platform}
-                      href={url}
+                      href={buildSocialUrl(platform, url)}
                       aria-label={meta.label}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -143,6 +152,16 @@ export default async function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <a
+                  href="https://www.endeksa.com/tr/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-silver-500 transition-colors hover:text-gold-400"
+                >
+                  Endeksa
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -166,14 +185,18 @@ export default async function Footer() {
               {t("contact")}
             </h4>
             <ul className="space-y-4">
-              {contactItems.map(({ icon: Icon, text }) => (
+              {contactItems.map(({ icon: Icon, text, href }) => (
                 <li key={text} className="flex items-start gap-3">
                   <Icon
                     size={14}
                     strokeWidth={1.5}
                     className="mt-0.5 shrink-0 text-gold-500"
                   />
+                  {href ? (
+                    <a href={href} className="text-sm text-silver-500 hover:text-gold-400 transition-colors">{text}</a>
+                  ) : (
                   <span className="text-sm text-silver-500">{text}</span>
+                  )}
                 </li>
               ))}
             </ul>

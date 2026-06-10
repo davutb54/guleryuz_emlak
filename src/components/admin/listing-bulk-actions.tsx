@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, Link } from "@/i18n/navigation";
-import { Trash2, CheckSquare, Archive, Zap, Pencil, Eye, Star } from "lucide-react";
+import { Trash2, CheckSquare, Archive, Zap, Pencil, Eye, Star, Printer } from "lucide-react";
 import { bulkListingAction, toggleFeatured } from "@/lib/actions/listing";
 import ListingStatusSelect from "./listing-status-select";
 
@@ -170,6 +170,11 @@ export default function ListingTable({ listings }: Props) {
                           className="p-1.5 rounded-md text-silver-500 hover:text-gold-400 hover:bg-gold-500/8 transition-colors"
                           title="Düzenle">
                           <Pencil size={15} strokeWidth={1.5} />
+                        </Link>
+                        <Link href={`/admin/ilanlar/${listing.id}/afis`} target="_blank"
+                          className="p-1.5 rounded-md text-silver-500 hover:text-green-400 hover:bg-green-500/8 transition-colors"
+                          title="Afiş Yazdır">
+                          <Printer size={15} strokeWidth={1.5} />
                         </Link>
                       </div>
                     </td>

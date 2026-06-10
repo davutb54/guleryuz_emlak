@@ -7,6 +7,88 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "@/i18n/navigation";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
+import { Video } from "lucide-react";
+
+interface GalleryItem {
+  id: string;
+  url: string;
+  type: string;
+  thumbnail: string | null;
+}
+
+function GalleryMedia({ item }: { item: GalleryItem }) {
+  if (item.type === "video") {
+    if (item.thumbnail) {
+      return (
+        <div className="relative w-full h-full group">
+          <Image src={item.thumbnail} fill className="object-cover" alt="Video thumbnail" sizes="(max-width: 1024px) 100vw, 25vw" />
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/30 transition-colors">
+            <Video size={32} className="text-white/80" strokeWidth={1.5} />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="relative w-full h-full bg-navy-800 flex items-center justify-center">
+        <Video size={32} className="text-silver-500" strokeWidth={1.5} />
+      </div>
+    );
+  }
+  
+  return <Image src={item.url} fill className="object-cover transition-transform duration-500 hover:scale-105" alt="Gallery" sizes="(max-width: 1024px) 100vw, 25vw" />;
+}
+
+function FBGrid({ items }: { items: GalleryItem[] }) {
+  const count = items.length;
+  if (count === 0) return null;
+
+  if (count === 1) {
+    return (
+      <div className="relative w-full h-full overflow-hidden">
+        <GalleryMedia item={items[0]} />
+      </div>
+    );
+  }
+
+  if (count === 2) {
+    return (
+      <div className="grid grid-cols-2 gap-1 w-full h-full bg-navy-900">
+        <div className="relative overflow-hidden"><GalleryMedia item={items[0]} /></div>
+        <div className="relative overflow-hidden"><GalleryMedia item={items[1]} /></div>
+      </div>
+    );
+  }
+
+  if (count === 3) {
+    return (
+      <div className="grid grid-cols-2 gap-1 w-full h-full bg-navy-900">
+        <div className="relative overflow-hidden"><GalleryMedia item={items[0]} /></div>
+        <div className="grid grid-rows-2 gap-1 h-full">
+          <div className="relative overflow-hidden"><GalleryMedia item={items[1]} /></div>
+          <div className="relative overflow-hidden"><GalleryMedia item={items[2]} /></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-1 w-full h-full bg-navy-900">
+      <div className="relative overflow-hidden"><GalleryMedia item={items[0]} /></div>
+      <div className="grid grid-rows-2 gap-1 h-full">
+        <div className="relative overflow-hidden"><GalleryMedia item={items[1]} /></div>
+        <div className="grid grid-cols-2 gap-1">
+          <div className="relative overflow-hidden"><GalleryMedia item={items[2]} /></div>
+          <div className="relative overflow-hidden group">
+            <GalleryMedia item={items[3]} />
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-colors group-hover:bg-black/50">
+              <span className="text-white font-medium text-xs md:text-sm">Tümünü Gör</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const LISTING_TYPES = [
   { value: "", labelKey: "allTypes" },
@@ -37,7 +119,28 @@ function formatPrice(price: number, currency: string) {
   return `${price.toLocaleString("tr-TR")} ${currency === "TRY" ? "₺" : currency}`;
 }
 
-export default function HomeHero() {
+function getYouTubeId(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+interface HomeHeroProps {
+  locale?: string;
+  galleryItems?: GalleryItem[];
+  settings?: {
+    heroOverline?: string | null;
+    heroHeadline?: string | null;
+    heroHeadlineAccent?: string | null;
+    heroSub?: string | null;
+    statYear?: string | null;
+    statTransactions?: string | null;
+    statCustomers?: string | null;
+    homeVideoUrl?: string | null;
+  };
+}
+
+export default function HomeHero({ locale, galleryItems, settings }: HomeHeroProps) {
   const t = useTranslations("hero");
   const s = useTranslations("search");
   const router = useRouter();
@@ -104,7 +207,7 @@ export default function HomeHero() {
   }
 
   return (
-    <section className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center overflow-hidden px-5 py-20 md:px-8 lg:px-16">
+    <section className="relative flex min-h-[calc(100vh-80px)] flex-col justify-center overflow-hidden py-20">
       {/* Arka plan gradyanı */}
       <div
         className="absolute inset-0 -z-10"
@@ -119,26 +222,62 @@ export default function HomeHero() {
         style={{ background: "radial-gradient(circle, #D4A744 0%, transparent 70%)" }}
       />
 
-      {/* İçerik */}
-      <div className="w-full max-w-4xl text-center animate-fade-up">
-        <p className="mb-6 text-xs font-semibold uppercase tracking-[0.3em] text-gold-500">
-          ✦ {t("overline")} ✦
-        </p>
-        <h1 className="text-balance font-display text-display-xl text-cream-50 md:text-display-2xl">
-          {t("headline")}{" "}
-          <em className="not-italic text-gold-500">{t("headlineAccent")}</em>
-        </h1>
-        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-cream-300 md:text-lg">
-          {t("sub")}
-        </p>
-        <div
-          className="mx-auto mt-8 h-px w-16"
-          style={{ background: "var(--color-gold-500)" }}
-        />
+      {/* Container for Video, Content & Gallery */}
+      <div className="w-full max-w-[1920px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8 z-10 relative mt-10 lg:mt-0 px-5 lg:px-0">
+        
+        {/* Sol Kanat (Video) */}
+        {settings?.homeVideoUrl ? (
+          <div className="w-full lg:w-[25%] xl:w-[22%] 2xl:w-[20%] aspect-video lg:aspect-[4/3] bg-black rounded-2xl lg:rounded-l-none lg:rounded-r-3xl overflow-hidden shadow-2xl relative order-2 lg:order-1">
+            {settings.homeVideoUrl.includes("youtube.com") || settings.homeVideoUrl.includes("youtu.be") ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${getYouTubeId(settings.homeVideoUrl)}?autoplay=1&mute=1&loop=1&controls=1&playlist=${getYouTubeId(settings.homeVideoUrl)}`}
+                title="YouTube video"
+                frameBorder="0"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              ></iframe>
+            ) : (
+              <video
+                src={settings.homeVideoUrl}
+                autoPlay
+                muted
+                loop
+                controls
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+          </div>
+        ) : <div className="hidden lg:block lg:w-[25%] xl:w-[22%] 2xl:w-[20%]" />}
+
+        {/* Orta (Metin) */}
+        <div className="w-full lg:flex-1 flex flex-col justify-center py-4 text-center items-center animate-fade-up relative z-20 order-1 lg:order-2">
+           <p className="mb-6 text-xs font-semibold uppercase tracking-[0.3em] text-gold-500">
+             ✦ {settings?.heroOverline || t("overline")} ✦
+           </p>
+           <h1 className="text-balance font-display text-display-xl text-cream-50 md:text-display-2xl lg:text-[2.5rem] xl:text-[3rem] 2xl:text-display-2xl leading-tight break-words">
+             {settings?.heroHeadline || t("headline")}{" "}
+             <em className="not-italic text-gold-500 break-words">{settings?.heroHeadlineAccent || t("headlineAccent")}</em>
+           </h1>
+           <p className="mt-6 max-w-md xl:max-w-xl text-base leading-relaxed text-cream-300 md:text-lg">
+             {settings?.heroSub || t("sub")}
+           </p>
+           <div className="mt-8 h-px w-16 mx-auto" style={{ background: "var(--color-gold-500)" }} />
+        </div>
+
+        {/* Sağ Kanat (Galeri) */}
+        {galleryItems && galleryItems.length > 0 ? (
+          <div className="w-full lg:w-[25%] xl:w-[22%] 2xl:w-[20%] aspect-video lg:aspect-[4/3] bg-navy-900 rounded-2xl lg:rounded-r-none lg:rounded-l-3xl overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.05)] relative order-3 lg:order-3">
+             <Link href="/galeri" className="block w-full h-full hover:opacity-90 transition-opacity">
+               <FBGrid items={galleryItems} />
+             </Link>
+          </div>
+        ) : <div className="hidden lg:block lg:w-[25%] xl:w-[22%] 2xl:w-[20%]" />}
       </div>
 
       {/* Arama çubuğu */}
-      <div className="mt-12 w-full max-w-5xl animate-fade-up relative" ref={containerRef}>
+      <div className="mt-12 w-full max-w-5xl mx-auto px-5 md:px-8 lg:px-16 animate-fade-up relative z-10" ref={containerRef}>
         <div className="glass rounded-2xl p-2 md:rounded-[20px]">
           <div className="grid grid-cols-1 gap-1 md:grid-cols-[1fr_auto_auto_auto_auto]">
             {/* Arama kutusu */}
@@ -211,13 +350,13 @@ export default function HomeHero() {
 
             {/* Ara butonu */}
             <button
-              onClick={handleSearch}
-              className={cn(
-                "flex items-center justify-center gap-2 rounded-xl px-6 py-3",
-                "bg-gold-500 text-sm font-semibold text-navy-900",
-                "transition-all duration-200 hover:bg-gold-400 hover:-translate-y-px",
-                "shadow-glow-sm"
-              )}
+               onClick={handleSearch}
+               className={cn(
+                 "flex items-center justify-center gap-2 rounded-xl px-6 py-3",
+                 "bg-gold-500 text-sm font-semibold text-navy-900",
+                 "transition-all duration-200 hover:bg-gold-400 hover:-translate-y-px",
+                 "shadow-glow-sm"
+               )}
             >
               <Search size={16} />
               <span>{s("search")}</span>
@@ -227,7 +366,7 @@ export default function HomeHero() {
 
         {/* Dropdown sonuçlar */}
         {open && (
-          <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl bg-navy-800 border border-[rgba(212,167,68,0.2)] shadow-2xl overflow-hidden z-50">
+          <div className="absolute top-full left-0 right-0 mt-2 mx-5 md:mx-8 lg:mx-16 rounded-2xl bg-navy-800 border border-[rgba(212,167,68,0.2)] shadow-2xl overflow-hidden z-50">
             {results.length === 0 ? (
               <div className="px-4 py-5 text-center text-sm text-silver-500">
                 &ldquo;{query}&rdquo; için sonuç bulunamadı
@@ -294,11 +433,11 @@ export default function HomeHero() {
       </div>
 
       {/* İstatistik bantı */}
-      <div className="mt-16 flex flex-wrap justify-center gap-x-12 gap-y-4 animate-fade-up">
+      <div className="mt-16 px-5 w-full flex flex-wrap justify-center gap-x-12 gap-y-4 animate-fade-up z-10 relative">
         {[
-          { value: "500+", label: "Aktif İlan" },
-          { value: "12+", label: "Yıllık Deneyim" },
-          { value: "1200+", label: "Mutlu Müşteri" },
+          { value: settings?.statTransactions || "500+", label: locale === "en" ? "Active Listings" : "Aktif İlan" },
+          { value: settings?.statYear || "12+", label: locale === "en" ? "Years Experience" : "Yıllık Deneyim" },
+          { value: settings?.statCustomers || "1200+", label: locale === "en" ? "Happy Customers" : "Mutlu Müşteri" },
         ].map(({ value, label }) => (
           <div key={label} className="text-center">
             <p className="font-display text-2xl font-bold text-gold-500 tabular-nums">

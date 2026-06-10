@@ -26,11 +26,14 @@ export default async function AdminLayout({
     redirect(`/${locale}`);
   }
 
+  const pendingSubmissions = await db.listingSubmission.count({ where: { status: "PENDING" } });
+
   // AGENT — 2FA zorunlu değil, doğrudan AdminShell
   if (!TWO_FA_ROLES.includes(session.user.role)) {
     return (
       <AdminShell
         locale={locale}
+        pendingSubmissions={pendingSubmissions}
         user={{
           name: session.user.name,
           email: session.user.email,
@@ -56,6 +59,7 @@ export default async function AdminLayout({
       locale={locale}
       isVerified={isVerified}
       twoFAEnabled={twoFAEnabled}
+      pendingSubmissions={pendingSubmissions}
       user={{
         name: session.user.name,
         email: session.user.email,

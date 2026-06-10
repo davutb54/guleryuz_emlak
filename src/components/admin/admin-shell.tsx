@@ -9,9 +9,10 @@ interface AdminShellProps {
   children: React.ReactNode;
   user: { name?: string | null; email?: string | null; role?: string };
   locale: string;
+  pendingSubmissions?: number;
 }
 
-export default function AdminShell({ children, user, locale }: AdminShellProps) {
+export default function AdminShell({ children, user, locale, pendingSubmissions }: AdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -34,6 +35,7 @@ export default function AdminShell({ children, user, locale }: AdminShellProps) 
           locale={locale}
           user={user}
           onNavigate={() => setSidebarOpen(false)}
+          pendingSubmissions={pendingSubmissions}
         />
       </div>
 

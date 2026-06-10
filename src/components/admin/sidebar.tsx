@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Mail,
   Shield,
+  Inbox,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -22,21 +23,23 @@ interface SidebarProps {
   locale: string;
   user: { name?: string | null; email?: string | null; role?: string };
   onNavigate?: () => void;
+  pendingSubmissions?: number;
 }
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/ilanlar", label: "İlanlar", icon: ListFilter },
-  { href: "/admin/kullanicilar", label: "Kullanıcılar", icon: Users },
-  { href: "/admin/yorumlar", label: "Yorumlar", icon: MessageSquare },
-  { href: "/admin/galeri", label: "Galeri", icon: Image },
-  { href: "/admin/iletisim", label: "İletişim", icon: Mail },
-  { href: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
-  { href: "/admin/2fa-kurulum", label: "2FA Güvenlik", icon: Shield },
-  { href: "/admin/audit-log", label: "Denetim Günlüğü", icon: ClipboardList },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/ilanlar", label: "İlanlar", icon: ListFilter, roles: ["AGENT", "ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/ilan-talepleri", label: "İlan Talepleri", icon: Inbox, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/kullanicilar", label: "Kullanıcılar", icon: Users, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/yorumlar", label: "Yorumlar", icon: MessageSquare, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/galeri", label: "Galeri", icon: Image, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/iletisim", label: "İletişim", icon: Mail, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/ayarlar", label: "Site Ayarları", icon: Settings, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/2fa-kurulum", label: "2FA Güvenlik", icon: Shield, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin/audit-log", label: "Denetim Günlüğü", icon: ClipboardList, roles: ["ADMIN", "SUPER_ADMIN"] },
 ];
 
-export default function AdminSidebar({ user, onNavigate }: SidebarProps) {
+export default function AdminSidebar({ user, onNavigate, pendingSubmissions }: SidebarProps) {
   const pathname = usePathname();
 
   function isActive(href: string, exact = false) {
@@ -56,7 +59,7 @@ export default function AdminSidebar({ user, onNavigate }: SidebarProps) {
       {/* Navigasyon */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-3">
-          {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+          {NAV_ITEMS.filter(({ roles }) => !user.role || roles.includes(user.role)).map(({ href, label, icon: Icon, exact }) => {
             const active = isActive(href, exact);
             return (
               <li key={href}>
@@ -76,7 +79,15 @@ export default function AdminSidebar({ user, onNavigate }: SidebarProps) {
                     className={active ? "text-gold-500" : "text-silver-500"}
                   />
                   {label}
-                  {active && (
+                  {href === "/admin/ilan-talepleri" && (pendingSubmissions ?? 0) > 0 && (
+                    <span className="ml-auto flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-gold-500 text-navy-900 text-[10px] font-bold">
+                      {pendingSubmissions}
+                    </span>
+                  )}
+                  {active && href !== "/admin/ilan-talepleri" && (
+                    <ChevronRight size={14} className="ml-auto text-gold-500" />
+                  )}
+                  {active && href === "/admin/ilan-talepleri" && (pendingSubmissions ?? 0) === 0 && (
                     <ChevronRight size={14} className="ml-auto text-gold-500" />
                   )}
                 </Link>

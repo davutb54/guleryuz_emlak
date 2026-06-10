@@ -10,7 +10,9 @@ import {
   Users,
   Building2,
   TrendingUp,
+  MessageCircle,
 } from "lucide-react";
+import type { ContactPartner } from "@/components/admin/settings-form";
 
 export const metadata: Metadata = {
   title: "Hakkımızda | Güleryüz Gayrimenkul",
@@ -40,7 +42,7 @@ export default async function HakkimizdaPage() {
   const [settings, teamMembers] = await Promise.all([
     db.siteSettings.findFirst(),
     db.user.findMany({
-      where: { role: { in: ["ADMIN", "AGENT"] } },
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
       select: {
         id: true,
         name: true,
@@ -53,6 +55,14 @@ export default async function HakkimizdaPage() {
       orderBy: [{ role: "asc" }, { name: "asc" }],
     }),
   ]);
+
+  let hakkimizdaPartners: ContactPartner[] = [];
+  if (settings?.contactPhones) {
+    try { hakkimizdaPartners = JSON.parse(settings.contactPhones); } catch {}
+  }
+  if (hakkimizdaPartners.length === 0 && settings?.contactPhone) {
+    hakkimizdaPartners = [{ name: "", phone: settings.contactPhone, whatsapp: "" }];
+  }
 
   const aboutText =
     settings?.aboutTr ??
@@ -156,15 +166,35 @@ export default async function HakkimizdaPage() {
                       <span className="text-sm">{settings.address}</span>
                     </div>
                   )}
-                  {settings.contactPhone && (
-                    <div className="flex items-center gap-3 text-silver-400">
-                      <Phone className="w-4 h-4 text-gold-500 shrink-0" />
-                      <a
-                        href={`tel:${settings.contactPhone}`}
-                        className="text-sm hover:text-gold-400 transition-colors"
-                      >
-                        {settings.contactPhone}
-                      </a>
+                  {hakkimizdaPartners.length > 0 && (
+                    <div className="flex items-start gap-3 text-silver-400">
+                      <Phone className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" />
+                      <div className="space-y-2">
+                        {hakkimizdaPartners.map((p, i) => (
+                          <div key={i} className="flex flex-col gap-1">
+                            {p.name && <span className="text-xs text-silver-500">{p.name}</span>}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <a
+                                href={`tel:${p.phone}`}
+                                className="text-sm hover:text-gold-400 transition-colors"
+                              >
+                                {p.phone}
+                              </a>
+                              {p.whatsapp && (
+                                <a
+                                  href={`https://wa.me/${p.whatsapp.replace(/\D/g, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs hover:bg-green-500/20 transition-colors"
+                                >
+                                  <MessageCircle className="w-3 h-3" />
+                                  WhatsApp
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {settings.contactEmail && (

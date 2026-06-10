@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import ListingForm, { type ListingFormData } from "@/components/admin/listing-form";
 import { Link } from "@/i18n/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -9,12 +10,13 @@ export default async function DuzenlePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, session] = await Promise.all([params, auth()]);
 
   const listing = await db.listing.findUnique({
     where: { id },
     select: {
       id: true,
+      agentId: true,
       category: true,
       type: true,
       status: true,
@@ -56,6 +58,7 @@ export default async function DuzenlePage({
       ceilingHeight: true,
       storefrontWidth: true,
       virtualTourUrl: true,
+      sahibindenUrl: true,
       featured: true,
       images: {
         orderBy: { order: "asc" },
@@ -66,7 +69,11 @@ export default async function DuzenlePage({
 
   if (!listing) notFound();
 
-  const { images, ...listingData } = listing;
+  if (session?.user?.role === "AGENT" && listing.agentId !== session.user.id) {
+    notFound();
+  }
+
+  const { images, agentId: _agentId, ...listingData } = listing;
 
   const formData: ListingFormData = {
     ...listingData,

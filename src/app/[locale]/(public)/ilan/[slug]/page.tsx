@@ -26,6 +26,7 @@ import FavoriteButton from "@/components/listing/favorite-button";
 import ShareButtons from "@/components/listing/share-buttons";
 import CommentForm from "@/components/listing/comment-form";
 import CommentList from "@/components/listing/comment-list";
+import ListingQrCode from "@/components/listing/listing-qr-code";
 import { Link } from "@/i18n/navigation";
 
 const BASE_URL =
@@ -472,10 +473,23 @@ export default async function IlanDetayPage({
 
                 <Link
                   href="/iletisim"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-gold-500/40 text-gold-500 font-medium text-sm hover:bg-gold-500/8 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-gold-500/40 text-gold-500 font-medium text-sm hover:bg-gold-500/8 transition-colors mb-3"
                 >
                   Mesaj Gönder
                 </Link>
+
+                {listing.sahibindenUrl && (
+                  <a
+                    href={listing.sahibindenUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-[#ffe800] text-black font-semibold text-sm hover:brightness-95 transition-all mb-3"
+                  >
+                    Sahibinden'de İncele
+                  </a>
+                )}
+
+                <ListingQrCode url={pageUrl} />
               </div>
 
               {/* Sanal tur */}

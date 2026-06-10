@@ -10,7 +10,8 @@ type ActionResult = { success: true } | { success: false; error: string };
 
 const settingsSchema = z.object({
   contactEmail: z.string().email("Geçerli bir e-posta girin"),
-  contactPhone: z.string().min(1, "Telefon gerekli"),
+  contactPhone: z.string().optional().nullable().or(z.literal("")),
+  contactPhones: z.string().optional().nullable().or(z.literal("")),
   address: z.string().min(1, "Adres gerekli"),
   workingHours: z.string().min(1, "Çalışma saatleri gerekli"),
   aboutTr: z.string().max(5000).optional().nullable(),
@@ -24,6 +25,19 @@ const settingsSchema = z.object({
   statTransactions: z.string().max(20).optional().nullable().or(z.literal("")),
   statCustomers: z.string().max(20).optional().nullable().or(z.literal("")),
   statSatisfaction: z.string().max(20).optional().nullable().or(z.literal("")),
+  homeHeroOverlineTr: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeHeroOverlineEn: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeHeroHeadlineTr: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeHeroHeadlineEn: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeHeroHeadlineAccentTr: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeHeroHeadlineAccentEn: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeHeroSubTr: z.string().max(1000).optional().nullable().or(z.literal("")),
+  homeHeroSubEn: z.string().max(1000).optional().nullable().or(z.literal("")),
+  homeFeaturedOverlineTr: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeFeaturedOverlineEn: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeFeaturedTitleTr: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeFeaturedTitleEn: z.string().max(200).optional().nullable().or(z.literal("")),
+  homeVideoUrl: z.string().max(500).optional().nullable().or(z.literal("")),
   // Sosyal linkler ayrı field'lar olarak gelir
   socialInstagram: z.string().url().optional().nullable().or(z.literal("")),
   socialFacebook: z.string().url().optional().nullable().or(z.literal("")),
@@ -43,7 +57,7 @@ export async function updateSiteSettings(raw: unknown): Promise<ActionResult> {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Geçersiz veri" };
   }
 
-  const { socialInstagram, socialFacebook, socialYoutube, socialWhatsapp, socialX, kvkkText, privacyText, termsText, contactLat, contactLng, officePhoto, statYear, statTransactions, statCustomers, statSatisfaction, ...rest } = parsed.data;
+  const { socialInstagram, socialFacebook, socialYoutube, socialWhatsapp, socialX, kvkkText, privacyText, termsText, contactLat, contactLng, officePhoto, statYear, statTransactions, statCustomers, statSatisfaction, contactPhones, homeHeroOverlineTr, homeHeroOverlineEn, homeHeroHeadlineTr, homeHeroHeadlineEn, homeHeroHeadlineAccentTr, homeHeroHeadlineAccentEn, homeHeroSubTr, homeHeroSubEn, homeFeaturedOverlineTr, homeFeaturedOverlineEn, homeFeaturedTitleTr, homeFeaturedTitleEn, homeVideoUrl, ...rest } = parsed.data;
 
   const socialLinks = JSON.stringify({
     instagram: socialInstagram || null,
@@ -64,12 +78,28 @@ export async function updateSiteSettings(raw: unknown): Promise<ActionResult> {
     statTransactions: statTransactions || null,
     statCustomers: statCustomers || null,
     statSatisfaction: statSatisfaction || null,
+    contactPhones: contactPhones || null,
+    homeHeroOverlineTr: homeHeroOverlineTr || null,
+    homeHeroOverlineEn: homeHeroOverlineEn || null,
+    homeHeroHeadlineTr: homeHeroHeadlineTr || null,
+    homeHeroHeadlineEn: homeHeroHeadlineEn || null,
+    homeHeroHeadlineAccentTr: homeHeroHeadlineAccentTr || null,
+    homeHeroHeadlineAccentEn: homeHeroHeadlineAccentEn || null,
+    homeHeroSubTr: homeHeroSubTr || null,
+    homeHeroSubEn: homeHeroSubEn || null,
+    homeFeaturedOverlineTr: homeFeaturedOverlineTr || null,
+    homeFeaturedOverlineEn: homeFeaturedOverlineEn || null,
+    homeFeaturedTitleTr: homeFeaturedTitleTr || null,
+    homeFeaturedTitleEn: homeFeaturedTitleEn || null,
+    homeVideoUrl: homeVideoUrl || null,
   };
+
+  const safeRest = { ...rest, contactPhone: rest.contactPhone || "" };
 
   await db.siteSettings.upsert({
     where: { id: 1 },
-    update: { ...rest, ...locationData, ...extraData, socialLinks, kvkkText: kvkkText || null, privacyText: privacyText || null, termsText: termsText || null },
-    create: { id: 1, ...rest, ...locationData, ...extraData, socialLinks, kvkkText: kvkkText || null, privacyText: privacyText || null, termsText: termsText || null },
+    update: { ...safeRest, ...locationData, ...extraData, socialLinks, kvkkText: kvkkText || null, privacyText: privacyText || null, termsText: termsText || null },
+    create: { id: 1, ...safeRest, ...locationData, ...extraData, socialLinks, kvkkText: kvkkText || null, privacyText: privacyText || null, termsText: termsText || null },
   });
 
   await auditLog(session.user.id, "settings.update", "SiteSettings", "1");

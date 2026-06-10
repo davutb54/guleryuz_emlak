@@ -11,6 +11,10 @@ import {
   Star,
   UserCircle2,
   Bell,
+  FileText,
+  Clock,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import SearchAlertForm from "@/components/listing/search-alert-form";
 import DeleteSearchAlertButton from "@/components/listing/delete-search-alert-button";
@@ -39,7 +43,7 @@ export default async function ProfilPage({
 
   const userId = session.user.id;
 
-  const [user, favorites, comments, searchAlerts] = await Promise.all([
+  const [user, favorites, comments, searchAlerts, mySubmissions] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: { name: true, email: true, phone: true, avatar: true, createdAt: true, passwordHash: true },
@@ -78,6 +82,35 @@ export default async function ProfilPage({
       where: { userId },
       orderBy: { createdAt: "desc" },
     }),
+    db.listingSubmission.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        titleTr: true,
+        category: true,
+        type: true,
+        price: true,
+        currency: true,
+        district: true,
+        adminNote: true,
+        listingId: true,
+        createdAt: true,
+      },
+    }).then(async (subs) => {
+      // Onaylananlar için slug'ı da çek
+      const listingIds = subs.filter(s => s.listingId).map(s => s.listingId!);
+      const slugMap: Record<string, string> = {};
+      if (listingIds.length > 0) {
+        const listings = await db.listing.findMany({
+          where: { id: { in: listingIds } },
+          select: { id: true, slug: true },
+        });
+        listings.forEach(l => { slugMap[l.id] = l.slug; });
+      }
+      return subs.map(s => ({ ...s, listingSlug: s.listingId ? slugMap[s.listingId] : undefined }));
+    }),
   ]);
 
   if (!user) redirect(`/${locale}/giris`);
@@ -109,6 +142,111 @@ export default async function ProfilPage({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* ─── İlan Taleplerim ───────────────────────────────────────────── */}
+          <div className="lg:col-span-3">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-silver-300">
+                <FileText size={15} strokeWidth={1.5} className="text-gold-500" />
+                İlan Taleplerim
+                <span className="text-gold-500">({mySubmissions.length})</span>
+              </h2>
+              <Link
+                href="/ilan-ekle"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gold-500 text-navy-900 text-xs font-semibold hover:bg-gold-400 transition-colors"
+              >
+                + Yeni İlan Talebi
+              </Link>
+            </div>
+
+            {mySubmissions.length === 0 ? (
+              <div className="bg-navy-850 border border-[var(--border-subtle)] rounded-xl p-10 text-center">
+                <FileText size={32} strokeWidth={1} className="text-navy-700 mx-auto mb-3" />
+                <p className="text-silver-500 text-sm mb-4">
+                  Henüz ilan talebiniz yok.
+                </p>
+                <Link
+                  href="/ilan-ekle"
+                  className="inline-block px-5 py-2.5 rounded-full bg-gold-500 text-navy-900 text-sm font-semibold hover:bg-gold-400 transition-colors"
+                >
+                  İlan Talebi Oluştur
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {mySubmissions.map((sub) => {
+                  const categoryLabel =
+                    sub.category === "HOUSE" ? "Ev/Daire" :
+                    sub.category === "LAND" ? "Arsa" :
+                    sub.category === "FIELD" ? "Tarla" : "Dükkan";
+                  const typeLabel = sub.type === "SALE" ? "Satılık" : "Kiralık";
+
+                  return (
+                    <div
+                      key={sub.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-4 bg-navy-850 border border-[rgba(212,167,68,0.1)] rounded-xl p-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-cream-100 font-medium text-sm line-clamp-1">
+                            {sub.titleTr}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-silver-500">
+                          <span>{categoryLabel} • {typeLabel}</span>
+                          <span className="flex items-center gap-1">
+                            <MapPin size={10} strokeWidth={1.5} />
+                            {sub.district}
+                          </span>
+                          <span className="font-display text-gold-500 font-semibold">
+                            {Number(sub.price).toLocaleString("tr-TR")} ₺
+                          </span>
+                        </div>
+                        {sub.adminNote && sub.status === "REJECTED" && (
+                          <p className="text-xs text-red-400 mt-1.5 bg-red-500/10 px-2 py-1 rounded-lg">
+                            Red gerekçesi: {sub.adminNote}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        {sub.status === "PENDING" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                            <Clock size={11} />
+                            İnceleniyor
+                          </span>
+                        )}
+                        {sub.status === "APPROVED" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                            <CheckCircle size={11} />
+                            Yayında
+                          </span>
+                        )}
+                        {sub.status === "REJECTED" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                            <XCircle size={11} />
+                            Reddedildi
+                          </span>
+                        )}
+                        {sub.listingSlug && (
+                          <Link
+                            href={`/ilan/${sub.listingSlug}`}
+                            className="text-xs text-gold-400 hover:text-gold-300 transition-colors underline underline-offset-2"
+                          >
+                            İlanı Gör
+                          </Link>
+                        )}
+                        <p className="text-xs text-silver-600">
+                          {new Date(sub.createdAt).toLocaleDateString("tr-TR")}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* ─── Favoriler ─────────────────────────────────────────────────── */}
           <div className="lg:col-span-2 lg:row-span-2">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-silver-300 mb-5">

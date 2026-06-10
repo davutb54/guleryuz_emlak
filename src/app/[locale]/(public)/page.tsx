@@ -17,7 +17,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function HomePage() {
+export default async function HomePage(props: { params: Promise<{ locale: string }> }) {
+  const { locale } = await props.params;
+  const isEn = locale === "en";
+
   const featured = await db.listing.findMany({
     where: { status: "ACTIVE", featured: true },
     orderBy: { createdAt: "desc" },
@@ -44,10 +47,33 @@ export default async function HomePage() {
   });
 
   const total = await db.listing.count({ where: { status: "ACTIVE" } });
+  const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
+  
+  const galleryItems = await db.galleryItem.findMany({
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+    take: 4,
+    select: { id: true, url: true, type: true, thumbnail: true },
+  });
+
+  const featuredOverline = isEn ? settings?.homeFeaturedOverlineEn : settings?.homeFeaturedOverlineTr;
+  const featuredTitle = isEn ? settings?.homeFeaturedTitleEn : settings?.homeFeaturedTitleTr;
 
   return (
     <>
-      <HomeHero />
+      <HomeHero
+        locale={locale}
+        galleryItems={galleryItems}
+        settings={{
+          heroOverline: isEn ? settings?.homeHeroOverlineEn : settings?.homeHeroOverlineTr,
+          heroHeadline: isEn ? settings?.homeHeroHeadlineEn : settings?.homeHeroHeadlineTr,
+          heroHeadlineAccent: isEn ? settings?.homeHeroHeadlineAccentEn : settings?.homeHeroHeadlineAccentTr,
+          heroSub: isEn ? settings?.homeHeroSubEn : settings?.homeHeroSubTr,
+          statYear: settings?.statYear,
+          statTransactions: settings?.statTransactions,
+          statCustomers: settings?.statCustomers,
+          homeVideoUrl: settings?.homeVideoUrl,
+        }}
+      />
 
       {featured.length > 0 && (
         <section className="bg-navy-900 py-16 px-5 lg:px-16">
@@ -55,10 +81,10 @@ export default async function HomePage() {
             <div className="flex items-end justify-between mb-8">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-600 mb-1">
-                  Seçkin İlanlar
+                  {featuredOverline || "Seçkin İlanlar"}
                 </p>
                 <h2 className="font-display text-display-md text-cream-50">
-                  Öne Çıkan Gayrimenkuller
+                  {featuredTitle || "Öne Çıkan Gayrimenkuller"}
                 </h2>
               </div>
               <Link

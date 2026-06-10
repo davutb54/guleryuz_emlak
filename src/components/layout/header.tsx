@@ -16,6 +16,8 @@ const NAV_LINKS = [
   { href: "/iletisim" as const, key: "contact" },
 ];
 
+const ADD_LISTING_HREF = "/ilan-ekle" as const;
+
 interface Notification {
   id: string;
   titleTr: string;
@@ -116,6 +118,12 @@ export default function Header({ user, notifications, unreadCount }: HeaderProps
 
         {/* Desktop sağ aksiyonlar */}
         <div className="hidden md:flex items-center gap-2">
+          <Link
+            href={ADD_LISTING_HREF}
+            className="flex items-center gap-1.5 rounded-full bg-gold-500/10 border border-gold-500/30 px-4 py-1.5 text-sm font-medium text-gold-400 transition-all hover:bg-gold-500/20 hover:text-gold-300"
+          >
+            + {t("addListing")}
+          </Link>
           <LocaleSwitcher />
           {user ? (
             <>
@@ -189,6 +197,13 @@ export default function Header({ user, notifications, unreadCount }: HeaderProps
                 {t(key as Parameters<typeof t>[0])}
               </Link>
             ))}
+            <Link
+              href={ADD_LISTING_HREF}
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-4 py-3 text-base font-medium text-gold-400 transition-colors hover:bg-gold-500/10"
+            >
+              + {t("addListing")}
+            </Link>
           </nav>
           <div className="mt-3 flex justify-center">
             <LocaleSwitcher />

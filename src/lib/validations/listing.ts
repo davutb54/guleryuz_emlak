@@ -107,6 +107,11 @@ export const listingCreateSchema = z.object({
     .url("Geçerli bir URL giriniz")
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  sahibindenUrl: z
+    .string()
+    .url("Geçerli bir URL giriniz")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   featured: z.boolean().default(false),
 });
 

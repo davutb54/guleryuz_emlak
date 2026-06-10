@@ -9,7 +9,8 @@
     "register": "Kayıt Ol",
     "profile": "Profilim",
     "logout": "Çıkış Yap",
-    "admin": "Yönetim Paneli"
+    "admin": "Yönetim Paneli",
+    "addListing": "İlan Ekle"
   },
   "hero": {
     "overline": "Eskişehir'in Güvenilir Emlak Ofisi",
@@ -65,6 +66,7 @@
     "contact": "İletişim",
     "saleListing": "Satılık İlanlar",
     "rentListing": "Kiralık İlanlar",
+    "addListing": "İlan Ekle",
     "appraisal": "Değerleme",
     "consultation": "Danışmanlık",
     "rights": "Tüm hakları saklıdır.",
