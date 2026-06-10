@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { signIn } from "next-auth/react";
 import GoogleSignInButton from "@/components/shared/google-sign-in-button";
+import FacebookSignInButton from "@/components/shared/facebook-sign-in-button";
 
 export default function GirisPage() {
   const [isPending, startTransition] = useTransition();
@@ -114,8 +115,11 @@ export default function GirisPage() {
           <div className="flex-1 h-px bg-[rgba(216,220,228,0.1)]" />
         </div>
 
-        {/* Google butonu */}
-        <GoogleSignInButton />
+        {/* Sosyal medya butonları */}
+        <div className="space-y-3">
+          <GoogleSignInButton />
+          <FacebookSignInButton />
+        </div>
 
         {/* Kayıt linki */}
         <p className="text-center text-silver-500 text-sm mt-6">

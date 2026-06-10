@@ -122,3 +122,22 @@ Eğer kendi bilgisayarınıza format atarsanız, bağlantıyı yeniden kurmak sa
    ssh guleryuz-ssh
    ```
 5. Enter'a bastığınızda tarayıcınızda Cloudflare güvenlik ekranı açılacaktır. Kendi e-posta adresinize gelen pini girdiğiniz an bağlantı onaylanır. Terminalinize döndüğünüzde emlakçının bilgisayarına giriş yapmış olursunuz. Artık dilediğiniz işlemi yapabilirsiniz.
+
+## 4. Facebook ile Giriş Kurulumu
+
+Sisteme Facebook ile giriş özelliği eklenmiştir. Ancak bunun canlıda ve geliştirme ortamında çalışabilmesi için Facebook Developer hesabı üzerinden uygulama oluşturulup ortam değişkenlerinin (API anahtarlarının) girilmesi gerekmektedir.
+
+Yarın yapılması gereken adımlar:
+
+1. **Facebook Geliştirici Platformu:** [developers.facebook.com](https://developers.facebook.com/) adresine giderek "Uygulamalarım" kısmından yeni bir uygulama oluştur. Uygulama türü olarak "Tüketici (Consumer)" seçebilirsin.
+2. **Facebook Login Kurulumu:** Uygulama paneline girdiğinde "Facebook Girişi" ürününü kur.
+3. **Yönlendirme URI'lerini Ayarla:** Facebook Login > Ayarlar sayfasında "Geçerli OAuth Yönlendirme URI'leri" kısmına şunları ekle:
+   - Geliştirme ortamı için: `http://localhost:3000/api/auth/callback/facebook`
+   - Canlı sunucu için: `https://www.guleryuzgayrimenkul.com/api/auth/callback/facebook` *(kendi domain adresini yazmalısın)*
+4. **Uygulama Kimliklerini Al:** Ayarlar > Temel sayfasından **App ID (Uygulama Kimliği)** ve **App Secret (Uygulama Gizli Anahtarı)** bilgilerini al.
+5. **Bilgisayara Ekle:** Emlakçının bilgisayarına bağlandığında, oradaki `.env` dosyasını açıp en altına şu satırları ekle:
+   ```env
+   FACEBOOK_CLIENT_ID="aldigin-app-id"
+   FACEBOOK_CLIENT_SECRET="aldigin-app-secret"
+   ```
+6. **Sistemi Yeniden Başlat:** Bu işlemlerden sonra projeyi yeniden başlat (`pm2 restart guleryuz`) ve Facebook ile girişin çalıştığını test et.

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import Facebook from "next-auth/providers/facebook";
 import { z } from "zod";
 import { db } from "./db";
 import { verifyPassword } from "./password";
@@ -16,6 +17,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    Facebook({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
     Credentials({
       credentials: {
@@ -70,7 +75,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === "google") {
+      if (account?.provider === "google" || account?.provider === "facebook") {
         await db.user.upsert({
           where: { email: user.email! },
           update: {},
@@ -87,7 +92,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, user, account }) {
-      if (account?.provider === "google" && token.email) {
+      if ((account?.provider === "google" || account?.provider === "facebook") && token.email) {
         const dbUser = await db.user.findUnique({
           where: { email: token.email },
           select: { id: true, role: true },

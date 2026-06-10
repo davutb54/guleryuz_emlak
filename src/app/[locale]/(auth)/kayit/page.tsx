@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import GoogleSignInButton from "@/components/shared/google-sign-in-button";
+import FacebookSignInButton from "@/components/shared/facebook-sign-in-button";
 
 export default function KayitPage() {
   const router = useRouter();
@@ -153,8 +154,11 @@ export default function KayitPage() {
           <div className="flex-1 h-px bg-[rgba(216,220,228,0.1)]" />
         </div>
 
-        {/* Google butonu */}
-        <GoogleSignInButton />
+        {/* Sosyal medya butonları */}
+        <div className="space-y-3">
+          <GoogleSignInButton />
+          <FacebookSignInButton />
+        </div>
 
         <p className="text-center text-silver-500 text-sm mt-6">
           Zaten hesabınız var mı?{" "}
