@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.youtube.com" },
       { protocol: "https", hostname: "i.vimeocdn.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      // Cloudinary CDN — bulut depolama
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   async headers() {

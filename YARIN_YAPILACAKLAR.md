@@ -36,71 +36,189 @@ Eğer daha önceden `guncelle.ps1` scriptini oluşturduysan doğrudan onu çalı
 
 ## 2. Şifresiz Bilgisayara Uzaktan Erişim (SSH) Kurulumu
 
-Windows OpenSSH, şifresi olmayan hesaplara dışarıdan standart yöntemle (şifre girerek) bağlanmaya güvenlik sebebiyle izin vermez. Şifre koyamayacağımız için **SSH Anahtarı (Public Key Authentication)** kullanmak ZORUNLUDUR. 
+Hesap adı **MAKRO GAYRİMENKUL** (boşluklu + Türkçe karakter), şifre yok.
+Windows SSH şifreyle giriş yapamayacağımız için **SSH Anahtarı** kullanmak ZORUNLUDUR.
 
-Bu sayede, kendi bilgisayarın ve emlakçının bilgisayarı arasında bir şifreleme anahtarı eşleşecek ve Windows şifresi olmadan bile güvenli şekilde giriş yapabileceksin.
+---
 
-### Adım 2.1: Kendi Bilgisayarında Anahtar Üret (Geliştirici Cihazı)
-Emlakçıya gitmeden önce (veya kendi bilgisayarın yanındaysa oradayken) bir terminal açıp şu komutu çalıştır:
+### Adım 2.0: Gitmeden Önce — Kendi Bilgisayarında Anahtar Üret
+
+Emlakçıya gitmeden kendi bilgisayarında bir kez yap:
+
 ```powershell
-ssh-keygen -t ed25519 -C "davut-uzaktan-baglanti"
+ssh-keygen -t ed25519 -C "davut-guleryuz"
 ```
-*(Sorulan sorulara Enter basıp geçebilirsin)*
+*(Sorulan her soruya Enter bas, passphrase istemez)*
 
-Bu komut sana `C:\Users\SeninKullaniciAdin\.ssh\id_ed25519.pub` adında bir dosya üretecek.
-**Bu dosyanın içindeki metni kopyala** ve emlakçının bilgisayarında erişebileceğin bir yere (kendine mail at, WhatsApp'tan gönder vs.) aktar.
+Üretilen public key'i görüntüle ve kendine WhatsApp/mail ile gönder ya da USB'ye kopyala:
+```powershell
+Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub"
+```
+Bu uzun satırın tamamı lazım olacak (ssh-ed25519 ile başlar).
 
-### Adım 2.2: Emlakçının Bilgisayarında SSH Kurulumu
-Emlakçının bilgisayarına geçtiğinde şunları yap:
+---
 
-1. **OpenSSH Server kurulu değilse kur ve başlat:** (Yönetici yetkili PowerShell açarak)
-   ```powershell
-   Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-   Start-Service sshd
-   Set-Service -Name sshd -StartupType Automatic
-   ```
+### Adım 2.1: Emlakçının Bilgisayarında — OpenSSH Kur
 
-2. **Anahtarını Emlakçının Bilgisayarına Tanıt:** (Normal PowerShell ile)
-   ```powershell
-   # .ssh klasörü oluştur
-   New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh"
-   
-   # Yetkili anahtarlar dosyasını oluştur ve not defteriyle aç
-   notepad "$env:USERPROFILE\.ssh\authorized_keys"
-   ```
-   Açılan not defterine kendi bilgisayarında ürettiğin **public key (.pub)** içeriğini yapıştır ve dosyayı kaydet.
+Emlakçının bilgisayarında **Yönetici yetkili PowerShell** aç
+*(Başlat → PowerShell → Sağ tık → Yönetici olarak çalıştır)*
 
-3. **İzinleri Ayarla (Çok Önemli):** Windows'un güvenlik kuralları gereği bu anahtarı kabul etmesi için aşağıdaki komutlarla klasör izinlerini düzelt:
-   ```powershell
-   icacls.exe "$env:USERPROFILE\.ssh\authorized_keys" /inheritance:r
-   icacls.exe "$env:USERPROFILE\.ssh\authorized_keys" /grant "$env:USERNAME:F"
-   icacls.exe "$env:USERPROFILE\.ssh\authorized_keys" /grant "SYSTEM:F"
-   ```
+```powershell
+# OpenSSH Server kur (zaten kuruluysa hata vermez, sorun değil)
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
 
-4. **SSH Servisini Yeniden Başlat:** (Yönetici yetkili PowerShell ile)
-   ```powershell
-   Restart-Service sshd
-   ```
+# Servisi başlat ve Windows açılışında otomatik çalışsın
+Start-Service sshd
+Set-Service -Name sshd -StartupType Automatic
+```
 
-### Adım 2.3: Cloudflare Tunnel İle Dışarıdan Erişim Bağlantısı
-`KURULUM.md` dosyasında da anlatıldığı gibi dışarıdan erişmek için Cloudflare üzerinden bir köprü kurmalıyız.
+---
 
-1. Emlakçının bilgisayarında `cloudflared` çalışıyor olmalı ve Tunnel `config.yml` dosyasında şu satırlar olmalı:
-   ```yaml
-     - hostname: ssh.guleryuzgayrimenkul.com
-       service: ssh://localhost:22
-   ```
+### Adım 2.2: Hesabın Admin mi Değil mi? — Kontrol Et
 
-2. **Kendi Ev/İş bilgisayarında** `.ssh/config` (Örn: `C:\Users\Davut\.ssh\config`) dosyasını açıp şunu ekle:
-   ```text
-   Host guleryuz-ssh
-       HostName ssh.guleryuzgayrimenkul.com
-       User EMLAKCI_WINDOWS_KULLANICI_ADI
-       ProxyCommand cloudflared access ssh --hostname %h
-   ```
-   *(EMLAKCI_WINDOWS_KULLANICI_ADI yerine emlakçının bilgisayarındaki aktif Windows kullanıcı adını yazmalısın. Bunu öğrenmek için emlakçıda `echo $env:USERNAME` yazabilirsin.)*
+Aynı Yönetici PowerShell'de şunu çalıştır:
 
-Tüm bunları yaptıktan sonra, evinden kendi bilgisayarından `ssh guleryuz-ssh` yazdığında, Windows parolasız dahi olsa şifre eşleşmesi (SSH Key) üzerinden Cloudflare aracılığıyla güvenli şekilde bilgisayara girebilecek ve `guncelle.ps1` komutlarını uzaktan çalıştırabileceksin.
+```powershell
+net localgroup Administrators | findstr /i "MAKRO"
+```
+
+- Çıktıda `MAKRO GAYRİMENKUL` **görünüyorsa** → **Admin hesap** → Adım 2.3-A'ya git
+- Çıktı **boşsa** → **Normal hesap** → Adım 2.3-B'ye git
+
+---
+
+### Adım 2.3-A: Admin Hesap İçin Anahtar Kurulumu
+
+Windows SSH, admin hesaplar için `.ssh` klasörünü değil merkezi bir dosyayı kullanır.
+
+**Yönetici yetkili PowerShell'de** devam et:
+
+```powershell
+# Merkezi SSH klasörü yoksa oluştur
+New-Item -ItemType Directory -Force "C:\ProgramData\ssh"
+
+# Dosyayı notepad ile aç (yoksa oluşturur)
+notepad "C:\ProgramData\ssh\administrators_authorized_keys"
+```
+
+Açılan Not Defteri'ne kendi bilgisayarından aldığın **public key satırını** yapıştır, kaydet ve kapat.
+
+```powershell
+# Dosya izinlerini ayarla (bu adım olmadan SSH kabul etmez)
+icacls.exe "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+icacls.exe "C:\ProgramData\ssh\administrators_authorized_keys" /grant "SYSTEM:F"
+icacls.exe "C:\ProgramData\ssh\administrators_authorized_keys" /grant "BUILTIN\Administrators:F"
+
+# SSH servisini yeniden başlat
+Restart-Service sshd
+```
+
+Kurulum bitti → **Adım 2.4'e geç**
+
+---
+
+### Adım 2.3-B: Normal Hesap İçin Anahtar Kurulumu
+
+**Normal PowerShell** aç (Yönetici değil, MAKRO GAYRİMENKUL hesabıyla açık olan):
+
+```powershell
+# .ssh klasörü oluştur
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh"
+
+# Dosyayı notepad ile aç
+notepad "$env:USERPROFILE\.ssh\authorized_keys"
+```
+
+Açılan Not Defteri'ne public key satırını yapıştır, kaydet ve kapat.
+
+```powershell
+# Dosya izinlerini ayarla
+icacls.exe "$env:USERPROFILE\.ssh\authorized_keys" /inheritance:r
+icacls.exe "$env:USERPROFILE\.ssh\authorized_keys" /grant "$env:USERNAME`:F"
+icacls.exe "$env:USERPROFILE\.ssh\authorized_keys" /grant "SYSTEM:F"
+```
+
+Şimdi **Yönetici PowerShell**'e geç ve servisi yeniden başlat:
+```powershell
+Restart-Service sshd
+```
+
+Kurulum bitti → **Adım 2.4'e geç**
+
+---
+
+### Adım 2.4: Kendi Bilgisayarında SSH Config Güncelle
+
+Kendi bilgisayarında `C:\Users\davutb54\.ssh\config` dosyasını notepad ile aç
+*(dosya yoksa oluştur)*:
+
+```powershell
+notepad "$env:USERPROFILE\.ssh\config"
+```
+
+Şunu ekle — `User` satırında Türkçe karakter ve boşluğu olduğu gibi yaz:
+
+```text
+Host guleryuz-ssh
+    HostName ssh.guleryuzgayrimenkul.com
+    User MAKRO GAYRİMENKUL
+    ProxyCommand cloudflared access ssh --hostname %h
+    ServerAliveInterval 60
+```
+
+Dosyayı **UTF-8 olarak kaydet**: Dosya → Farklı Kaydet → Kodlama: UTF-8 → Kaydet.
+
+---
+
+### Adım 2.5: Cloudflare Tunnel Ayarı (Emlakçı Bilgisayarında)
+
+Emlakçının bilgisayarındaki `cloudflared` config dosyasına SSH satırı eklenmiş olmalı.
+Config dosyası genellikle `C:\Users\MAKRO GAYRİMENKUL\.cloudflared\config.yml` yolunda bulunur:
+
+```yaml
+tunnel: TUNNEL_ID
+credentials-file: C:\Users\MAKRO GAYRİMENKUL\.cloudflared\TUNNEL_ID.json
+
+ingress:
+  - hostname: guleryuzgayrimenkul.com
+    service: http://localhost:3000
+  - hostname: www.guleryuzgayrimenkul.com
+    service: http://localhost:3000
+  - hostname: ssh.guleryuzgayrimenkul.com   # ← bu satır ekli değilse ekle
+    service: ssh://localhost:22
+  - service: http_status:404
+```
+
+Satırı ekledikten sonra cloudflared'ı yeniden başlat:
+```powershell
+Restart-Service cloudflared
+# veya cloudflared servis değil görev çubuğundaysa:
+# cloudflared tunnel run
+```
+
+---
+
+### Adım 2.6: Test Et
+
+Kendi bilgisayarına dön, PowerShell aç:
+
+```powershell
+ssh guleryuz-ssh
+```
+
+- Tarayıcıda Cloudflare onay sayfası açılırsa → e-postana gelen kodu gir
+- `PS C:\Users\MAKRO GAYRİMENKUL>` gibi bir prompt görürsen → **bağlantı başarılı!**
+
+**Bağlanamazsan kontrol listesi:**
+```powershell
+# Emlakçı bilgisayarında SSH portunu dinliyor mu?
+netstat -an | findstr ":22"
+
+# Firewall SSH'e izin veriyor mu?
+Get-NetFirewallRule -Name *OpenSSH* | Select Name, Enabled, Direction
+# Enabled=False görürsen:
+New-NetFirewallRule -Name "OpenSSH-Server" -DisplayName "OpenSSH Server" -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+```
 
 ## 3. İleride Bağlanma ve Tam Erişim
 
@@ -123,7 +241,44 @@ Eğer kendi bilgisayarınıza format atarsanız, bağlantıyı yeniden kurmak sa
    ```
 5. Enter'a bastığınızda tarayıcınızda Cloudflare güvenlik ekranı açılacaktır. Kendi e-posta adresinize gelen pini girdiğiniz an bağlantı onaylanır. Terminalinize döndüğünüzde emlakçının bilgisayarına giriş yapmış olursunuz. Artık dilediğiniz işlemi yapabilirsiniz.
 
-## 4. Facebook ile Giriş Kurulumu
+## 4. Fotoğraf Yükleme İyileştirmeleri — Sunucuya Deploy
+
+Kodda şu değişiklikler yapıldı, sunucuya uygulanması gerekiyor:
+
+- **Rate limit** artırıldı: 30 → 200 yükleme/saat (eski limitde birden fazla fotoğraf yükleyince takılıyordu)
+- **Dosya boyutu limiti** artırıldı: 10 MB → 50 MB (büyük fotoğraflar reddediliyordu, kullanıcıya net hata gösterilmiyordu)
+- **Cloudinary entegrasyonu** eklendi: isteğe bağlı, `.env`'de yoksa eski yerel depolama devam eder
+
+### Sunucuya Deploy Adımları
+
+```powershell
+cd C:\guleryuz
+git pull origin main
+npm ci
+npm run build
+pm2 restart guleryuz
+```
+
+### Cloudinary Kurulumu (İsteğe Bağlı — Ücretsiz)
+
+Cloudinary'nin ücretsiz planı var: **25 GB depolama, kart bilgisi istemez.**
+1000 fotoğrafta bile (foto başı ~1 MB) yalnızca 1 GB kullanılır. Ücretli plana geçmek **şart değil**.
+
+Faydalı olduğu durumlar: sunucu değişikliğinde/format atılınca fotoğraflar kaybolmaz, CDN ile hızlı yüklenir.
+
+1. [cloudinary.com](https://cloudinary.com) → Sign Up (ücretsiz)
+2. Dashboard → **Settings → Access Keys** bölümünden bilgileri al
+3. Sunucudaki `.env` dosyasına ekle:
+   ```env
+   CLOUDINARY_CLOUD_NAME="cloud_adin"
+   CLOUDINARY_API_KEY="1234567890"
+   CLOUDINARY_API_SECRET="abc123..."
+   ```
+4. `pm2 restart guleryuz` — hepsi bu kadar, kod zaten hazır
+
+---
+
+## 5. Facebook ile Giriş Kurulumu
 
 Sisteme Facebook ile giriş özelliği eklenmiştir. Ancak bunun canlıda ve geliştirme ortamında çalışabilmesi için Facebook Developer hesabı üzerinden uygulama oluşturulup ortam değişkenlerinin (API anahtarlarının) girilmesi gerekmektedir.
 
